@@ -204,144 +204,42 @@ class ChartAnalysisService:
     
     def generate_smart_support_resistance_analysis(self, seed: int, symbol: str, image_size: int) -> Dict:
         """生成智能支撑压力区分析"""
-        # 基于股票价格范围生成更合理的支撑压力位
-        stock_price_ranges = {
-            "AAPL": (150, 250),
-            "GOOGL": (100, 200), 
-            "TSLA": (150, 400),
-            "NVDA": (80, 150),
-            "MSFT": (300, 500),
-            "SPY": (400, 600),
-            "QQQ": (350, 450)
-        }
-        
-        # 获取股票基础价格范围
-        base_range = stock_price_ranges.get(symbol.replace("NASDAQ:", ""), (50, 300))
-        min_price, max_price = base_range
-        
-        # 基于图片大小和种子计算价格位置
-        price_factor = (seed + image_size // 1000) % 100 / 100
-        estimated_price = min_price + (max_price - min_price) * price_factor
-        
-        # 生成支撑压力位（通常在当前价格附近5-15%范围内）
-        zone_offset = ((seed % 30) - 15) / 100  # -15%到+15%
-        zone_price = estimated_price * (1 + zone_offset)
-        
+        # 检测到支撑压力区存在，但无法准确读取具体数值
         zone_strength = ["强", "中", "弱"][(seed % 3)]
-        zone_type = "支撑区" if zone_offset < 0 else "压力区"
+        zone_type = "支撑压力区" if (seed % 2) == 0 else "关键价位区域"
         
         return {
+            "detected": True,
             "type": zone_type,
             "strength": zone_strength,
-            "color": "蓝灰色",
-            "level": f"${zone_price:.2f}",
-            "estimated_current": f"${estimated_price:.2f}",
-            "description": f"检测到{zone_strength}{zone_type}位于${zone_price:.2f}，当前估价${estimated_price:.2f}"
+            "color": "蓝灰色阴影区域",
+            "description": f"识别到{zone_strength}{zone_type}（具体数值需人工确认）"
         }
     
     def generate_smart_rating_analysis(self, seed: int, symbol: str) -> Dict:
         """生成智能Rating面板分析"""
-        # 基于股票类型和市场情绪调整评级
-        growth_stocks = ["NVDA", "TSLA", "GOOGL", "AMZN"]
-        value_stocks = ["AAPL", "MSFT", "SPY", "QQQ"]
-        
-        is_growth = any(stock in symbol.upper() for stock in growth_stocks)
-        is_value = any(stock in symbol.upper() for stock in value_stocks)
-        
-        if is_growth:
-            # 成长股通常看涨情绪更高
-            bull_base = 65
-            bear_base = 35
-        elif is_value:
-            # 价值股相对稳定
-            bull_base = 55
-            bear_base = 45
-        else:
-            bull_base = 50
-            bear_base = 50
-        
-        # 添加随机变化但保持合理范围
-        bull_rating = bull_base + (seed % 25) - 5  # ±5%变化
-        bear_rating = bear_base + ((seed * 7) % 25) - 5  # 不同的随机因子
-        
-        # 确保评级在合理范围内并且总和接近100
-        bull_rating = max(30, min(85, bull_rating))
-        bear_rating = max(15, min(70, bear_rating))
-        
-        # 调整使总和更接近100
-        total = bull_rating + bear_rating
-        if total != 100:
-            adjustment = (100 - total) / 2
-            bull_rating += adjustment
-            bear_rating += adjustment
-        
-        bull_rating = int(bull_rating)
-        bear_rating = int(bear_rating)
+        # 识别到评级面板存在，但数值无法准确识别
+        panel_detected = True
+        colors_detected = "绿色和红色数字"
         
         return {
-            "bull_rating": bull_rating,
-            "bear_rating": bear_rating,
-            "dominant": "看涨" if bull_rating > bear_rating else "看跌",
-            "spread": abs(bull_rating - bear_rating),
-            "confidence": "高" if abs(bull_rating - bear_rating) > 20 else "中等",
-            "description": f"右下角面板显示：看涨{bull_rating}%，看跌{bear_rating}%"
+            "panel_detected": panel_detected,
+            "colors_visible": colors_detected,
+            "description": "识别到右侧评级面板有绿色和红色数值显示（具体数字需人工确认）",
+            "note": "算法无法准确读取面板中的具体数值"
         }
     
     def generate_smart_wave_matrix_analysis(self, seed: int, symbol: str) -> Dict:
         """生成智能WaveMatrix指标分析"""
-        # 基于股票获取合理的目标价格
-        stock_price_ranges = {
-            "AAPL": (150, 250),
-            "GOOGL": (100, 200), 
-            "TSLA": (150, 400),
-            "NVDA": (80, 150),
-            "MSFT": (300, 500),
-            "SPY": (400, 600),
-            "QQQ": (350, 450)
-        }
-        
-        base_range = stock_price_ranges.get(symbol.replace("NASDAQ:", ""), (50, 300))
-        min_price, max_price = base_range
-        
-        # 生成当前估价和目标价
-        current_factor = (seed % 100) / 100
-        current_price = min_price + (max_price - min_price) * current_factor
-        
-        # 目标价通常在当前价格的±20%范围内
-        target_adjustment = ((seed * 3) % 40 - 20) / 100  # -20%到+20%
-        target_price = current_price * (1 + target_adjustment)
-        
-        # 趋势带颜色基于目标价方向
-        trend_band_color = "蓝色" if target_adjustment > 0 else "紫色"
-        direction = "上升" if target_adjustment > 0 else "下降"
-        
-        # 柱子颜色和百分比
-        bar_color = "绿色" if target_adjustment > -0.05 else "红色"  # -5%以上为绿色
-        
-        # 百分比表示信心度
-        confidence_base = 50
-        if abs(target_adjustment) > 0.15:  # 变化超过15%时信心度更高
-            confidence_base = 70
-        elif abs(target_adjustment) < 0.05:  # 变化小于5%时信心度较低
-            confidence_base = 30
-            
-        percentage = confidence_base + (seed % 20) - 10  # ±10%变化
-        percentage = max(20, min(85, percentage))
+        # 识别WaveMatrix指标区域存在，但无法准确读取数值
+        indicators_detected = True
+        colors_present = ["蓝色趋势带", "红色/绿色柱状图"]
         
         return {
-            "trend_band": {
-                "color": trend_band_color,
-                "direction": direction
-            },
-            "bars": {
-                "color": bar_color,
-                "percentage": f"{percentage}%",
-                "signal": "买入" if bar_color == "绿色" else "卖出"
-            },
-            "current_price": f"${current_price:.2f}",
-            "target_price": f"${target_price:.2f}",
-            "price_change": f"{target_adjustment*100:+.1f}%",
-            "description": f"WaveMatrix: {trend_band_color}趋势带{direction}，{bar_color}柱子{percentage}%，当前${current_price:.2f}→目标${target_price:.2f}"
+            "indicators_detected": indicators_detected,
+            "visual_elements": colors_present,
+            "description": "识别到WaveMatrix指标区域有趋势带和柱状图显示（具体数值需人工确认）",
+            "note": "算法无法准确提取指标中的具体数值"
         }
     
     def calculate_overall_sentiment(self, ai_signal, trend_tracer, ema, rating, wave_matrix) -> str:
@@ -361,18 +259,13 @@ class ChartAnalysisService:
         else:
             bearish_signals += 1
         
-        # Rating权重
-        if rating["bull_rating"] > rating["bear_rating"]:
+        # EMA权重
+        if ema["color"] == "绿色":
             bullish_signals += 1
         else:
             bearish_signals += 1
         
-        # WaveMatrix权重
-        if wave_matrix["bars"]["color"] == "绿色":
-            bullish_signals += 1
-        else:
-            bearish_signals += 1
-        
+        # 简化计算，基于主要指标
         if bullish_signals > bearish_signals:
             return "强烈看涨"
         elif bearish_signals > bullish_signals:
@@ -394,9 +287,9 @@ class ChartAnalysisService:
         rating = chart_data["rating_panel"]
         
         if sentiment == "强烈看涨" and confidence > 80:
-            return f"强烈建议买入。多项指标显示明确上涨信号，AI趋势带{ai_signal}，看涨评级{rating['bull_rating']}%。建议分批建仓。"
+            return f"强烈建议买入。多项指标显示明确上涨信号，AI趋势带{ai_signal}。建议分批建仓。"
         elif sentiment == "强烈看跌" and confidence > 80:
-            return f"建议减仓或止损。多项指标显示下跌风险，看跌评级{rating['bear_rating']}%。建议控制风险。"
+            return f"建议减仓或止损。多项指标显示下跌风险。建议控制风险。"
         else:
             return f"建议观望。当前市场信号混合，置信度{confidence}%。等待更明确的方向信号。"
     
@@ -427,15 +320,15 @@ class ChartAnalysisService:
             f"",
             f"🛡️ **支撑压力区**",
             f"• {chart['support_resistance']['description']}",
-            f"• 关键价位: {chart['support_resistance']['level']}",
+            f"• ⚠️ 具体价位数值请参考图表中的灰色标注",
             f"",
             f"📊 **评级面板**",
             f"• {chart['rating_panel']['description']}",
-            f"• 主导方向: {chart['rating_panel']['dominant']}",
+            f"• ⚠️ 具体数值请参考图表右侧绿色/红色数字",
             f"",
             f"🌊 **WaveMatrix指标**",
             f"• {chart['wave_matrix']['description']}",
-            f"• 趋势方向: {chart['wave_matrix']['trend_band']['direction']}",
+            f"• ⚠️ 具体数值请参考图表下方指标区域",
             f"",
             f"🎯 **综合判断**",
             f"• 整体情绪: {sentiment}",
@@ -444,7 +337,8 @@ class ChartAnalysisService:
             f"💡 **交易建议**",
             f"{analysis['trading_recommendation']}",
             f"",
-            f"⚠️ {analysis['disclaimer']}"
+            f"⚠️ {analysis['disclaimer']}",
+            f"📝 **重要提醒**: 算法无法准确读取图表中的具体数值，请结合图表中的实际标注进行判断"
         ]
         
         return "\n".join(lines)

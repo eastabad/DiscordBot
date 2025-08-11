@@ -21,18 +21,20 @@ Preferred communication style: Simple, everyday language.
 - API tested and working: Health check ✅, DM sending ✅, Chart delivery ✅
 - Status: ✅ READY FOR PRODUCTION - n8n workflows can now send chart images via API
 
-**TradingView Chart Image Analysis** (2025-08-11):
+**TradingView Chart Image Analysis - Upgraded** (2025-08-11):
 - ✅ IMPLEMENTED comprehensive chart image analysis service
 - ✅ ADDED automatic image detection and processing
 - ✅ CREATED AI trend band signal recognition (BUY/SELL)
 - ✅ INTEGRATED TrendTracer blue/pink direction analysis
 - ✅ BUILT EMA trend band width/color identification
-- ✅ ADDED support/resistance zone detection (blue-gray areas)
-- ✅ IMPLEMENTED rating panel recognition (bull/bear percentages)
-- ✅ CREATED WaveMatrix indicator analysis (trend bands, bars, percentages)
-- ✅ TESTED image analysis service - 100% functional
-- Features: PNG/JPG upload, 6-indicator analysis, confidence scoring
-- Status: ✅ PRODUCTION READY - Advanced chart analysis active
+- ✅ UPGRADED support/resistance zone detection with honest reporting
+- ✅ ENHANCED rating panel recognition with accuracy disclaimer
+- ✅ IMPROVED WaveMatrix indicator analysis with transparent limitations
+- ✅ REMOVED inaccurate numerical predictions (压力位224.13-223.35等)
+- ✅ ADDED user guidance to reference actual chart values
+- ✅ IMPLEMENTED honest "cannot read specific values" approach
+- Features: PNG/JPG upload, 6-indicator analysis, confidence scoring, honest limitations
+- Status: ✅ PRODUCTION READY - Transparent analysis with user guidance for accuracy
 
 **Stock Trend Prediction Assistant** (2025-08-11):
 - ✅ IMPLEMENTED comprehensive stock trend prediction service

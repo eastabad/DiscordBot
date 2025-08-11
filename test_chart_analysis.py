@@ -37,9 +37,9 @@ async def test_chart_analysis():
                 print(f"  AI趋势带: {chart['ai_trend_bands']['signal']} - {chart['ai_trend_bands']['description']}")
                 print(f"  TrendTracer: {chart['trend_tracer']['direction']} - 动量{chart['trend_tracer']['momentum']}%")
                 print(f"  EMA带宽: {chart['ema_bands']['width']} - {chart['ema_bands']['color']}")
-                print(f"  支撑压力: {chart['support_resistance']['type']} - {chart['support_resistance']['level']}")
-                print(f"  评级: 看涨{chart['rating_panel']['bull_rating']}% vs 看跌{chart['rating_panel']['bear_rating']}%")
-                print(f"  WaveMatrix: {chart['wave_matrix']['bars']['color']}柱子{chart['wave_matrix']['bars']['percentage']} - 目标{chart['wave_matrix']['target_price']}")
+                print(f"  支撑压力: {chart['support_resistance']['description']}")
+                print(f"  评级: {chart['rating_panel']['description']}")
+                print(f"  WaveMatrix: {chart['wave_matrix']['description']}")
                 
                 print(f"  整体情绪: {analysis['overall_sentiment']}")
                 print(f"  置信度: {analysis['confidence_level']}%")
