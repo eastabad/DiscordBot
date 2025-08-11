@@ -131,6 +131,17 @@ Preferred communication style: Simple, everyday language.
 - Features: Stock charts, trend predictions, chart analysis all use DM delivery
 - Status: ✅ PRODUCTION READY - Unified private messaging system active
 
+**VIP管理命令系统** (2025-08-11):
+- ✅ IMPLEMENTED comprehensive command-based VIP management system
+- ✅ ADDED administrator permission checking for command access
+- ✅ CREATED user-friendly Discord commands for VIP management
+- ✅ BUILT automatic username fetching and validation
+- ✅ ENHANCED error handling with clear user feedback
+- ✅ SUPPORTS batch operations with message splitting for long lists
+- Available commands: !vip_add, !vip_remove, !vip_list, !quota, !help_admin
+- Admin users: easton, easmartalgo, TestAdmin (hardcoded permission list)
+- Status: ✅ PRODUCTION READY - Self-service VIP management active
+
 # System Architecture
 
 ## Core Components

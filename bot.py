@@ -119,6 +119,10 @@ class DiscordBot(commands.Bot):
         elif is_monitored_channel and message.attachments and self.has_chart_image(message.attachments):
             self.logger.info(f'在监控频道中检测到图表图片，开始处理图表分析...')
             await self.handle_chart_analysis_request(message)
+        # 检查管理员命令
+        elif self.has_admin_command(message.content):
+            self.logger.info(f'检测到管理员命令: {message.content[:30]}')
+            await self.handle_admin_command(message)
         else:
             self.logger.debug(f'消息不包含提及或股票命令: {message.content[:30]}')
             
@@ -438,6 +442,270 @@ class DiscordBot(commands.Bot):
                 await message.add_reaction("❌")
             except:
                 pass
+    
+    def has_admin_command(self, content: str) -> bool:
+        """检查消息是否包含管理员命令"""
+        admin_commands = ['!vip_add', '!vip_remove', '!vip_list', '!quota', '!help_admin']
+        content_lower = content.lower().strip()
+        return any(content_lower.startswith(cmd) for cmd in admin_commands)
+    
+    def is_admin_user(self, user_id: str) -> bool:
+        """检查用户是否有管理员权限"""
+        # 定义管理员用户ID列表
+        admin_user_ids = [
+            '1145170623354638418',  # easton
+            '1307107680560873524',  # TestAdmin
+            '1257109321947287648'   # easmartalgo
+        ]
+        return user_id in admin_user_ids
+    
+    async def handle_admin_command(self, message):
+        """处理管理员命令"""
+        try:
+            user_id = str(message.author.id)
+            username = message.author.display_name or message.author.name
+            
+            # 检查管理员权限
+            if not self.is_admin_user(user_id):
+                await message.reply("❌ 您没有管理员权限执行此命令")
+                return
+            
+            content = message.content.strip()
+            
+            if content.lower().startswith('!vip_add'):
+                await self.handle_vip_add_command(message, content)
+            elif content.lower().startswith('!vip_remove'):
+                await self.handle_vip_remove_command(message, content)
+            elif content.lower().startswith('!vip_list'):
+                await self.handle_vip_list_command(message)
+            elif content.lower().startswith('!quota'):
+                await self.handle_quota_command(message, content)
+            elif content.lower().startswith('!help_admin'):
+                await self.handle_admin_help_command(message)
+            
+        except Exception as e:
+            self.logger.error(f"处理管理员命令失败: {e}")
+            await message.reply("❌ 执行命令时发生错误")
+    
+    async def handle_vip_add_command(self, message, content):
+        """处理添加VIP命令: !vip_add <user_id> [reason]"""
+        try:
+            parts = content.split()
+            if len(parts) < 2:
+                await message.reply("❌ 格式错误！请使用: `!vip_add <用户ID> [原因]`")
+                return
+            
+            target_user_id = parts[1]
+            reason = " ".join(parts[2:]) if len(parts) > 2 else "管理员添加VIP"
+            
+            # 验证用户ID格式
+            if not target_user_id.isdigit() or len(target_user_id) < 10:
+                await message.reply("❌ 用户ID格式错误！请提供有效的Discord用户ID")
+                return
+            
+            # 检查用户是否已经是VIP
+            from models import ExemptUser, get_db_session
+            db = get_db_session()
+            existing_user = db.query(ExemptUser).filter(ExemptUser.user_id == target_user_id).first()
+            
+            if existing_user:
+                db.close()
+                await message.reply(f"⚠️ 用户 {target_user_id} 已经是VIP用户")
+                return
+            
+            # 获取目标用户的用户名（如果可能）
+            target_username = "Unknown"
+            try:
+                target_user = await self.fetch_user(int(target_user_id))
+                if target_user:
+                    target_username = target_user.display_name or target_user.name
+            except:
+                pass
+            
+            # 添加到豁免列表
+            new_exempt = ExemptUser(
+                user_id=target_user_id,
+                username=target_username,
+                reason=reason,
+                added_by=str(message.author.id)
+            )
+            
+            db.add(new_exempt)
+            db.commit()
+            db.close()
+            
+            self.logger.info(f"管理员 {message.author.name} 添加VIP用户: {target_user_id}")
+            await message.reply(f"✅ 成功添加VIP用户！\n**用户ID:** {target_user_id}\n**用户名:** {target_username}\n**原因:** {reason}")
+            
+        except Exception as e:
+            self.logger.error(f"处理VIP添加命令失败: {e}")
+            await message.reply("❌ 添加VIP用户时发生错误")
+    
+    async def handle_vip_remove_command(self, message, content):
+        """处理移除VIP命令: !vip_remove <user_id>"""
+        try:
+            parts = content.split()
+            if len(parts) != 2:
+                await message.reply("❌ 格式错误！请使用: `!vip_remove <用户ID>`")
+                return
+            
+            target_user_id = parts[1]
+            
+            # 验证用户ID格式
+            if not target_user_id.isdigit() or len(target_user_id) < 10:
+                await message.reply("❌ 用户ID格式错误！请提供有效的Discord用户ID")
+                return
+            
+            # 查找并删除用户
+            from models import ExemptUser, get_db_session
+            db = get_db_session()
+            exempt_user = db.query(ExemptUser).filter(ExemptUser.user_id == target_user_id).first()
+            
+            if not exempt_user:
+                db.close()
+                await message.reply(f"⚠️ 用户 {target_user_id} 不在VIP列表中")
+                return
+            
+            username = exempt_user.username
+            db.delete(exempt_user)
+            db.commit()
+            db.close()
+            
+            self.logger.info(f"管理员 {message.author.name} 移除VIP用户: {target_user_id}")
+            await message.reply(f"✅ 成功移除VIP用户！\n**用户ID:** {target_user_id}\n**用户名:** {username}")
+            
+        except Exception as e:
+            self.logger.error(f"处理VIP移除命令失败: {e}")
+            await message.reply("❌ 移除VIP用户时发生错误")
+    
+    async def handle_vip_list_command(self, message):
+        """处理VIP列表命令: !vip_list"""
+        try:
+            from models import ExemptUser, get_db_session
+            db = get_db_session()
+            exempt_users = db.query(ExemptUser).order_by(ExemptUser.created_at).all()
+            db.close()
+            
+            if not exempt_users:
+                await message.reply("📋 当前没有VIP用户")
+                return
+            
+            vip_list = "📋 **VIP用户列表：**\n\n"
+            for i, user in enumerate(exempt_users, 1):
+                created_date = user.created_at.strftime("%Y-%m-%d")
+                vip_list += f"**{i}.** `{user.user_id}`\n"
+                vip_list += f"   • 用户名: {user.username}\n"
+                vip_list += f"   • 原因: {user.reason}\n"
+                vip_list += f"   • 添加时间: {created_date}\n\n"
+            
+            # 分割长消息
+            if len(vip_list) > 2000:
+                # Discord消息长度限制，分割发送
+                parts = []
+                current_part = "📋 **VIP用户列表：**\n\n"
+                
+                for i, user in enumerate(exempt_users, 1):
+                    created_date = user.created_at.strftime("%Y-%m-%d")
+                    user_info = f"**{i}.** `{user.user_id}`\n"
+                    user_info += f"   • 用户名: {user.username}\n"
+                    user_info += f"   • 原因: {user.reason}\n"
+                    user_info += f"   • 添加时间: {created_date}\n\n"
+                    
+                    if len(current_part + user_info) > 1800:
+                        parts.append(current_part)
+                        current_part = user_info
+                    else:
+                        current_part += user_info
+                
+                if current_part.strip():
+                    parts.append(current_part)
+                
+                for part in parts:
+                    await message.reply(part)
+            else:
+                await message.reply(vip_list)
+            
+        except Exception as e:
+            self.logger.error(f"处理VIP列表命令失败: {e}")
+            await message.reply("❌ 获取VIP列表时发生错误")
+    
+    async def handle_quota_command(self, message, content):
+        """处理配额查询命令: !quota [user_id]"""
+        try:
+            parts = content.split()
+            
+            # 确定查询目标
+            if len(parts) == 1:
+                # 查询自己的配额
+                target_user_id = str(message.author.id)
+                target_username = message.author.display_name or message.author.name
+            elif len(parts) == 2:
+                # 查询指定用户的配额
+                target_user_id = parts[1]
+                if not target_user_id.isdigit() or len(target_user_id) < 10:
+                    await message.reply("❌ 用户ID格式错误！请提供有效的Discord用户ID")
+                    return
+                
+                # 获取用户名
+                target_username = "Unknown"
+                try:
+                    target_user = await self.fetch_user(int(target_user_id))
+                    if target_user:
+                        target_username = target_user.display_name or target_user.name
+                except:
+                    pass
+            else:
+                await message.reply("❌ 格式错误！请使用: `!quota` 或 `!quota <用户ID>`")
+                return
+            
+            # 检查配额
+            can_request, current_count, remaining = self.rate_limiter.check_user_limit(target_user_id, target_username)
+            is_vip = remaining == 999
+            
+            if is_vip:
+                status_msg = f"👑 **{target_username}** (`{target_user_id}`)\n"
+                status_msg += f"**状态:** VIP无限制 ✨\n"
+                status_msg += f"**今日使用:** {current_count} 次\n"
+                status_msg += f"**权限:** 无限制使用所有功能"
+            else:
+                status_msg = f"👤 **{target_username}** (`{target_user_id}`)\n"
+                status_msg += f"**状态:** 普通用户\n"
+                status_msg += f"**今日使用:** {current_count}/3 次\n"
+                status_msg += f"**剩余次数:** {remaining} 次\n"
+                status_msg += f"**重置时间:** 每日UTC午夜"
+            
+            await message.reply(status_msg)
+            
+        except Exception as e:
+            self.logger.error(f"处理配额查询命令失败: {e}")
+            await message.reply("❌ 查询配额时发生错误")
+    
+    async def handle_admin_help_command(self, message):
+        """处理管理员帮助命令: !help_admin"""
+        help_text = """🛠️ **管理员命令帮助**
+
+**VIP管理命令:**
+• `!vip_add <用户ID> [原因]` - 添加VIP用户
+• `!vip_remove <用户ID>` - 移除VIP用户
+• `!vip_list` - 查看所有VIP用户
+
+**配额管理命令:**
+• `!quota` - 查看自己的配额
+• `!quota <用户ID>` - 查看指定用户配额
+
+**其他命令:**
+• `!help_admin` - 显示此帮助信息
+
+**示例:**
+```
+!vip_add 1234567890123456789 测试VIP用户
+!vip_remove 1234567890123456789
+!quota 1234567890123456789
+```
+
+**注意:** 只有管理员可以使用这些命令"""
+        
+        await message.reply(help_text)
         
     async def handle_mention(self, message):
         """处理@提及的消息"""
