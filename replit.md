@@ -21,6 +21,18 @@ Preferred communication style: Simple, everyday language.
 - API tested and working: Health check ✅, DM sending ✅, Chart delivery ✅
 - Status: ✅ READY FOR PRODUCTION - n8n workflows can now send chart images via API
 
+**Daily Request Limit Feature** (2025-08-11):
+- ✅ ADDED PostgreSQL database integration for user tracking
+- ✅ IMPLEMENTED daily request limit (3 requests per user per day)
+- ✅ CREATED rate limiter with SQLAlchemy ORM
+- ✅ ADDED user quota checking before chart generation
+- ✅ INTEGRATED remaining quota display in success messages
+- ✅ ADDED !quota command to check current usage
+- ✅ TESTED rate limiting functionality - 100% working
+- ✅ SUPPORTS quota reset functionality for admins
+- ✅ AUTOMATIC quota reset every day at UTC midnight
+- Status: ✅ PRODUCTION READY - Users limited to 3 charts per day
+
 **Stock Chart Bot Final Upgrade** (2025-08-11):
 - ✅ UPGRADED to use Layout Chart Storage API for true custom TradingView layouts
 - ✅ REMOVED @bot requirement - bot now responds to simple stock commands in monitored channel

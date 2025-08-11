@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 from webhook_handler import WebhookHandler
 from chart_service import ChartService
+from rate_limiter import RateLimiter
 import io
 import re
 
@@ -32,6 +33,7 @@ class DiscordBot(commands.Bot):
         self.config = config
         self.webhook_handler = WebhookHandler(config.webhook_url)
         self.chart_service = ChartService(config)
+        self.rate_limiter = RateLimiter(daily_limit=3)  # 每日限制3次
         self.logger = logging.getLogger(__name__)
         
     async def on_ready(self):
@@ -103,6 +105,19 @@ class DiscordBot(commands.Bot):
     async def handle_chart_request(self, message):
         """处理股票图表请求"""
         try:
+            # 检查用户请求限制
+            user_id = str(message.author.id)
+            username = message.author.display_name or message.author.name
+            
+            can_request, current_count, remaining = self.rate_limiter.check_user_limit(user_id, username)
+            
+            if not can_request:
+                # 用户已超过每日限制
+                limit_msg = f"⚠️ {username}, 您今日的图表请求已达到限制 (3次/天)。请明天再试。"
+                await message.reply(limit_msg)
+                self.logger.warning(f"用户 {username} ({user_id}) 超过每日请求限制: {current_count}/3")
+                return
+            
             # 解析命令
             command_result = self.chart_service.parse_command(message.content)
             if not command_result:
@@ -112,6 +127,13 @@ class DiscordBot(commands.Bot):
                 return
             
             symbol, timeframe = command_result
+            
+            # 记录请求（在实际处理前记录）
+            success = self.rate_limiter.record_request(user_id, username)
+            remaining_after = remaining - 1
+            
+            if success:
+                self.logger.info(f"用户 {username} 请求图表，今日剩余: {remaining_after}/3")
             
             # 添加处理中的反应
             await message.add_reaction("⏳")
@@ -131,9 +153,10 @@ class DiscordBot(commands.Bot):
                     
                     await message.author.send(content=dm_content, file=file)
                     
-                    # 在频道中提示成功
+                    # 在频道中提示成功（包含剩余次数信息）
                     success_msg = self.chart_service.format_success_message(symbol, timeframe)
-                    await message.channel.send(f"{message.author.mention} {success_msg}")
+                    limit_info = f"（今日剩余 {remaining_after}/3 次）"
+                    await message.channel.send(f"{message.author.mention} {success_msg} {limit_info}")
                     
                     # 更新反应为成功
                     await message.remove_reaction("⏳", self.user)
@@ -298,11 +321,32 @@ class DiscordBot(commands.Bot):
         )
         embed.add_field(name="服务器数量", value=len(self.guilds), inline=True)
         embed.add_field(name="延迟", value=f"{round(self.latency * 1000)}ms", inline=True)
-        embed.add_field(name="版本", value="1.0.0", inline=True)
-        embed.add_field(
-            name="功能", 
-            value="• 监听@提及\n• 转发到Webhook\n• 消息格式化", 
-            inline=False
-        )
+        await ctx.send(embed=embed)
         
+    @commands.command(name='quota', aliases=['限制', '配额'])
+    async def quota_command(self, ctx):
+        """查看用户每日请求配额"""
+        user_id = str(ctx.author.id)
+        stats = self.rate_limiter.get_user_stats(user_id)
+        
+        if stats:
+            embed = discord.Embed(
+                title="📊 每日请求配额",
+                description=f"用户：{ctx.author.display_name}",
+                color=0x00aaff
+            )
+            embed.add_field(name="今日已使用", value=f"{stats['request_count']}/3", inline=True)
+            embed.add_field(name="剩余次数", value=f"{stats['remaining']}", inline=True)
+            embed.add_field(name="配额重置", value="每日0点（UTC）", inline=True)
+            
+            if stats['last_request']:
+                embed.add_field(name="最后请求", value=stats['last_request'][:19], inline=False)
+        else:
+            embed = discord.Embed(
+                title="📊 每日请求配额",
+                description=f"用户：{ctx.author.display_name}\n今日尚未使用图表功能",
+                color=0x00ff00
+            )
+            embed.add_field(name="可用次数", value="3/3", inline=True)
+            
         await ctx.send(embed=embed)
