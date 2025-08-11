@@ -22,15 +22,16 @@ Preferred communication style: Simple, everyday language.
 - Status: ✅ READY FOR PRODUCTION - n8n workflows can now send chart images via API
 
 **Stock Chart Bot Final Upgrade** (2025-08-11):
-- ✅ UPGRADED to use Advanced Chart API with Layout ID for custom TradingView layouts
+- ✅ UPGRADED to use Layout Chart API for true custom TradingView layouts
 - ✅ REMOVED @bot requirement - bot now responds to simple stock commands in monitored channel
 - ✅ IMPROVED command parsing for format: SYMBOL,TIMEFRAME (e.g. AAPL,1h or NASDAQ:GOOG,15m)
-- ✅ TESTED API integration successfully - 47KB chart generation working
+- ✅ FIXED API endpoint to use correct Layout Chart path: /v2/tradingview/layout-chart/{layout_id}
+- ✅ TESTED Layout Chart API successfully - 113KB chart generation working (vs 47KB previously)
 - ✅ DUAL MODE support: Stock charts in monitored channel + webhook forwarding in other channels
 - ✅ AUTO-PREFIX for stock symbols (adds NASDAQ: if no exchange specified)
 - ✅ LAYOUT CHART functionality using user's custom TradingView layout (1920x1080)
 - Configuration: CHART_IMG_API_KEY, LAYOUT_ID, MONITOR_CHANNEL_ID, TradingView session
-- Status: ✅ PRODUCTION READY - Full stock chart bot functionality deployed
+- Status: ✅ PRODUCTION READY - Layout Chart bot functionality fully deployed
 
 # System Architecture
 
