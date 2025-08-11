@@ -27,6 +27,22 @@ class UserRequestLimit(Base):
     def __repr__(self):
         return f"<UserRequestLimit(user_id='{self.user_id}', date='{self.request_date}', count={self.request_count})>"
 
+
+class ExemptUser(Base):
+    """豁免用户表 - 这些用户不受每日请求限制约束"""
+    __tablename__ = 'exempt_users'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(50), nullable=False, unique=True, index=True)  # Discord用户ID
+    username = Column(String(100), nullable=False)  # Discord用户名
+    reason = Column(String(200), nullable=True)  # 豁免原因
+    added_by = Column(String(50), nullable=True)  # 添加者ID
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    
+    def __repr__(self):
+        return f"<ExemptUser(user_id='{self.user_id}', username='{self.username}', reason='{self.reason}')>"
+
 # 数据库连接设置
 DATABASE_URL = os.environ.get('DATABASE_URL')
 engine = create_engine(DATABASE_URL, echo=False)

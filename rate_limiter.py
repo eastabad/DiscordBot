@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
-from models import UserRequestLimit, get_db_session
+from models import UserRequestLimit, ExemptUser, get_db_session
 
 class RateLimiter:
     """用户请求频率限制管理器"""
@@ -30,6 +30,14 @@ class RateLimiter:
         """
         try:
             db = get_db_session()
+            
+            # 首先检查用户是否在豁免列表中
+            exempt_user = db.query(ExemptUser).filter(ExemptUser.user_id == user_id).first()
+            if exempt_user:
+                self.logger.info(f"用户 {username} ({user_id}) 在豁免列表中，无限制")
+                db.close()
+                return True, 0, 999  # 豁免用户返回999剩余次数表示无限制
+            
             today = date.today()
             
             # 查找用户今日记录
@@ -200,3 +208,103 @@ class RateLimiter:
         except Exception as e:
             self.logger.error(f"重置用户限制时发生错误: {e}")
             return False
+    
+    def add_exempt_user(self, user_id: str, username: str, reason: str = "管理员豁免", added_by: str = "system") -> bool:
+        """
+        添加豁免用户
+        
+        Args:
+            user_id: Discord用户ID
+            username: Discord用户名  
+            reason: 豁免原因
+            added_by: 添加者ID
+            
+        Returns:
+            bool: 是否成功添加
+        """
+        try:
+            db = get_db_session()
+            
+            # 检查用户是否已经在豁免列表中
+            existing = db.query(ExemptUser).filter(ExemptUser.user_id == user_id).first()
+            if existing:
+                self.logger.warning(f"用户 {username} ({user_id}) 已在豁免列表中")
+                db.close()
+                return False
+            
+            # 添加新的豁免用户
+            exempt_user = ExemptUser(
+                user_id=user_id,
+                username=username,
+                reason=reason,
+                added_by=added_by
+            )
+            db.add(exempt_user)
+            db.commit()
+            
+            self.logger.info(f"成功添加豁免用户: {username} ({user_id}), 原因: {reason}")
+            db.close()
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"添加豁免用户时发生错误: {e}")
+            return False
+    
+    def remove_exempt_user(self, user_id: str) -> bool:
+        """
+        移除豁免用户
+        
+        Args:
+            user_id: Discord用户ID
+            
+        Returns:
+            bool: 是否成功移除
+        """
+        try:
+            db = get_db_session()
+            
+            # 查找并删除豁免用户
+            exempt_user = db.query(ExemptUser).filter(ExemptUser.user_id == user_id).first()
+            if exempt_user:
+                username = exempt_user.username
+                db.delete(exempt_user)
+                db.commit()
+                self.logger.info(f"成功移除豁免用户: {username} ({user_id})")
+                db.close()
+                return True
+            else:
+                self.logger.warning(f"用户 {user_id} 不在豁免列表中")
+                db.close()
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"移除豁免用户时发生错误: {e}")
+            return False
+    
+    def list_exempt_users(self) -> list:
+        """
+        获取所有豁免用户列表
+        
+        Returns:
+            list: 豁免用户信息列表
+        """
+        try:
+            db = get_db_session()
+            exempt_users = db.query(ExemptUser).all()
+            
+            result = []
+            for user in exempt_users:
+                result.append({
+                    'user_id': user.user_id,
+                    'username': user.username,
+                    'reason': user.reason,
+                    'added_by': user.added_by,
+                    'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                })
+            
+            db.close()
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"获取豁免用户列表时发生错误: {e}")
+            return []

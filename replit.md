@@ -101,6 +101,24 @@ Preferred communication style: Simple, everyday language.
 - Configuration: CHART_IMG_API_KEY, LAYOUT_ID, MONITOR_CHANNEL_ID, TradingView session
 - Status: ✅ PRODUCTION READY - Perfect technical indicator loading achieved
 
+**Command Format Enhancement** (2025-08-11):
+- ✅ FIXED critical parsing issue - now supports both Chinese comma "，" and English comma ","
+- ✅ ENHANCED error handling with detailed user feedback for format errors
+- ✅ IMPROVED error messages instead of just ❌ reactions
+- Supported formats: "AAPL,1h", "AAPL，1h", "NASDAQ:GOOG,15m"
+- Status: ✅ PRODUCTION READY - Multilingual comma support active
+
+**Admin Exemption System** (2025-08-11):
+- ✅ IMPLEMENTED comprehensive admin exemption system for daily request limits
+- ✅ CREATED exempt_users database table with user tracking
+- ✅ ADDED automatic exemption check in rate limiting logic
+- ✅ BUILT admin commands: !exempt_add, !exempt_remove, !exempt_list
+- ✅ ENHANCED !quota command to show exemption status with gold embed
+- ✅ SUPPORTS reason tracking and admin audit trail
+- ✅ TESTED exemption system - bypasses 3/day limit completely
+- Commands: "!exempt_add USER_ID reason", "!exempt_remove USER_ID", "!exempt_list"
+- Status: ✅ PRODUCTION READY - Admin exemption system fully functional
+
 # System Architecture
 
 ## Core Components

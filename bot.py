@@ -662,12 +662,26 @@ class DiscordBot(commands.Bot):
     async def quota_command(self, ctx):
         """查看用户每日请求配额"""
         user_id = str(ctx.author.id)
-        stats = self.rate_limiter.get_user_stats(user_id)
+        username = ctx.author.display_name or ctx.author.name
         
+        # 检查是否为豁免用户
+        can_request, current_count, remaining = self.rate_limiter.check_user_limit(user_id, username)
+        if remaining == 999:  # 豁免用户
+            embed = discord.Embed(
+                title="🌟 豁免用户状态",
+                description=f"用户：{username}",
+                color=0xffd700
+            )
+            embed.add_field(name="权限", value="无请求限制", inline=True)
+            embed.add_field(name="状态", value="豁免用户", inline=True)
+            await ctx.send(embed=embed)
+            return
+        
+        stats = self.rate_limiter.get_user_stats(user_id)
         if stats:
             embed = discord.Embed(
                 title="📊 每日请求配额",
-                description=f"用户：{ctx.author.display_name}",
+                description=f"用户：{username}",
                 color=0x00aaff
             )
             embed.add_field(name="今日已使用", value=f"{stats['request_count']}/3", inline=True)
@@ -679,9 +693,68 @@ class DiscordBot(commands.Bot):
         else:
             embed = discord.Embed(
                 title="📊 每日请求配额",
-                description=f"用户：{ctx.author.display_name}\n今日尚未使用图表功能",
+                description=f"用户：{username}\n今日尚未使用图表功能",
                 color=0x00ff00
             )
             embed.add_field(name="可用次数", value="3/3", inline=True)
             
+        await ctx.send(embed=embed)
+    
+    @commands.command(name='exempt_add')
+    @commands.has_permissions(administrator=True)
+    async def add_exempt_user(self, ctx, user_id: str, *, reason: str = "管理员豁免"):
+        """添加豁免用户（仅管理员）"""
+        try:
+            # 尝试获取用户信息
+            target_user = self.get_user(int(user_id)) or await self.fetch_user(int(user_id))
+            username = target_user.display_name or target_user.name
+        except:
+            username = f"User_{user_id}"
+            
+        success = self.rate_limiter.add_exempt_user(
+            user_id, username, reason, str(ctx.author.id)
+        )
+        
+        if success:
+            await ctx.send(f"✅ 成功添加豁免用户: {username} (`{user_id}`)\n原因: {reason}")
+        else:
+            await ctx.send(f"❌ 添加豁免用户失败，该用户可能已在豁免列表中")
+    
+    @commands.command(name='exempt_remove')
+    @commands.has_permissions(administrator=True)
+    async def remove_exempt_user(self, ctx, user_id: str):
+        """移除豁免用户（仅管理员）"""
+        success = self.rate_limiter.remove_exempt_user(user_id)
+        
+        if success:
+            await ctx.send(f"✅ 成功移除豁免用户: `{user_id}`")
+        else:
+            await ctx.send(f"❌ 移除豁免用户失败，该用户不在豁免列表中")
+    
+    @commands.command(name='exempt_list')
+    @commands.has_permissions(administrator=True)
+    async def list_exempt_users(self, ctx):
+        """查看所有豁免用户（仅管理员）"""
+        exempt_users = self.rate_limiter.list_exempt_users()
+        
+        if not exempt_users:
+            await ctx.send("📋 当前没有豁免用户")
+            return
+        
+        embed = discord.Embed(
+            title="🌟 豁免用户列表",
+            description="以下用户不受每日请求限制约束：",
+            color=0xffd700
+        )
+        
+        for user in exempt_users[:10]:  # 限制显示10个用户避免消息过长
+            embed.add_field(
+                name=f"{user['username']}",
+                value=f"ID: `{user['user_id']}`\n原因: {user['reason']}\n添加时间: {user['created_at'][:10]}",
+                inline=False
+            )
+        
+        if len(exempt_users) > 10:
+            embed.set_footer(text=f"显示前10个用户，总计{len(exempt_users)}个豁免用户")
+        
         await ctx.send(embed=embed)
