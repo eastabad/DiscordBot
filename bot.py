@@ -11,6 +11,7 @@ from webhook_handler import WebhookHandler
 from chart_service import ChartService
 from rate_limiter import RateLimiter
 from prediction_service import StockPredictionService
+from chart_analysis_service import ChartAnalysisService
 import io
 import re
 
@@ -36,6 +37,7 @@ class DiscordBot(commands.Bot):
         self.chart_service = ChartService(config)
         self.rate_limiter = RateLimiter(daily_limit=3)  # 每日限制3次
         self.prediction_service = StockPredictionService(config)  # 股票预测服务
+        self.chart_analysis_service = ChartAnalysisService(config)  # 图表分析服务
         self.logger = logging.getLogger(__name__)
         
     async def on_ready(self):
@@ -93,8 +95,12 @@ class DiscordBot(commands.Bot):
             self.logger.info(f'在监控频道中检测到提及，开始处理股票图表请求...')
             await self.handle_chart_request(message)
         elif is_mentioned:
+            # 检查是否有图片附件需要分析
+            if message.attachments and self.has_chart_image(message.attachments):
+                self.logger.info(f'检测到图表图片，开始处理图表分析...')
+                await self.handle_chart_analysis_request(message)
             # 检查是否是预测请求
-            if self.has_prediction_command(message.content):
+            elif self.has_prediction_command(message.content):
                 self.logger.info(f'检测到预测请求，开始处理股票预测...')
                 await self.handle_prediction_request(message)
             else:
@@ -106,6 +112,9 @@ class DiscordBot(commands.Bot):
         elif is_monitored_channel and self.has_prediction_command(message.content):
             self.logger.info(f'在监控频道中检测到预测请求，开始处理股票预测...')
             await self.handle_prediction_request(message)
+        elif is_monitored_channel and message.attachments and self.has_chart_image(message.attachments):
+            self.logger.info(f'在监控频道中检测到图表图片，开始处理图表分析...')
+            await self.handle_chart_analysis_request(message)
         else:
             self.logger.debug(f'消息不包含提及或股票命令: {message.content[:30]}')
             
@@ -258,6 +267,72 @@ class DiscordBot(commands.Bot):
             )
             try:
                 await message.remove_reaction("🔄", self.user)
+                await message.add_reaction("❌")
+            except:
+                pass
+    
+    def has_chart_image(self, attachments) -> bool:
+        """检查附件中是否包含图表图片"""
+        for attachment in attachments:
+            # 检查文件扩展名
+            filename = attachment.filename.lower()
+            if filename.endswith(('.png', '.jpg', '.jpeg')):
+                # 检查文件大小（避免过大的文件）
+                if attachment.size < 10 * 1024 * 1024:  # 10MB限制
+                    return True
+        return False
+    
+    async def handle_chart_analysis_request(self, message):
+        """处理图表分析请求"""
+        try:
+            # 找到第一个图片附件
+            chart_image = None
+            for attachment in message.attachments:
+                if attachment.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    chart_image = attachment
+                    break
+            
+            if not chart_image:
+                await message.channel.send(
+                    f"{message.author.mention} 请上传PNG、JPG或JPEG格式的图表图片"
+                )
+                return
+            
+            # 从消息中尝试提取股票符号（可选）
+            symbol = ""
+            symbol_match = re.search(r'([A-Z][A-Z:]*[A-Z]+)', message.content, re.IGNORECASE)
+            if symbol_match:
+                symbol = symbol_match.group(1).upper()
+                if ':' not in symbol:
+                    symbol = f"NASDAQ:{symbol}"
+            
+            # 添加处理中的反应
+            await message.add_reaction("🔍")
+            
+            self.logger.info(f'开始分析图表图片: {chart_image.filename}, Symbol: {symbol}')
+            
+            # 分析图表
+            analysis = await self.chart_analysis_service.analyze_chart_image(chart_image.url, symbol)
+            
+            # 格式化分析消息
+            analysis_message = self.chart_analysis_service.format_analysis_message(analysis)
+            
+            # 发送分析结果
+            await message.channel.send(f"{message.author.mention}\n{analysis_message}")
+            
+            # 移除处理中反应，添加成功反应
+            await message.remove_reaction("🔍", self.user)
+            await message.add_reaction("📊")
+            
+            self.logger.info(f'成功发送图表分析: {symbol}')
+            
+        except Exception as e:
+            self.logger.error(f"处理图表分析请求失败: {e}")
+            await message.channel.send(
+                f"{message.author.mention} 分析图表时发生错误，请确保图片清晰可读"
+            )
+            try:
+                await message.remove_reaction("🔍", self.user)
                 await message.add_reaction("❌")
             except:
                 pass

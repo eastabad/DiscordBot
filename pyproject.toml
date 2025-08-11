@@ -5,6 +5,7 @@ description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
     "aiohttp>=3.12.15",
+    "anthropic>=0.62.0",
     "discord-py>=2.5.2",
     "psycopg2-binary>=2.9.10",
     "sqlalchemy>=2.0.43",
