@@ -12,6 +12,7 @@ from chart_service import ChartService
 from rate_limiter import RateLimiter
 from prediction_service import StockPredictionService
 from chart_analysis_service import ChartAnalysisService
+from channel_cleaner import ChannelCleaner
 import io
 import re
 
@@ -38,6 +39,7 @@ class DiscordBot(commands.Bot):
         self.rate_limiter = RateLimiter(daily_limit=3)  # 每日限制3次
         self.prediction_service = StockPredictionService(config)  # 股票预测服务
         self.chart_analysis_service = ChartAnalysisService(config)  # 图表分析服务
+        self.channel_cleaner = ChannelCleaner(self, config)  # 频道清理服务
         self.logger = logging.getLogger(__name__)
         
     async def on_ready(self):
@@ -62,6 +64,10 @@ class DiscordBot(commands.Bot):
             self.logger.info(f'监控频道IDs: {", ".join(self.config.monitor_channel_ids)}')
         else:
             self.logger.warning('未设置监控频道ID')
+        
+        # 启动频道清理服务
+        await self.channel_cleaner.start_daily_cleanup()
+        self.logger.info("频道清理服务已启动")
         
     async def on_message(self, message):
         """消息事件处理"""
@@ -1124,4 +1130,133 @@ class DiscordBot(commands.Bot):
         if len(exempt_users) > 10:
             embed.set_footer(text=f"显示前10个用户，总计{len(exempt_users)}个豁免用户")
         
+        await ctx.send(embed=embed)
+    
+    @commands.command(name='cleanup_now')
+    @commands.has_permissions(administrator=True)
+    async def manual_cleanup_command(self, ctx, days: int = 1):
+        """手动清理频道无用消息（仅管理员）"""
+        if days < 1 or days > 7:
+            await ctx.send("❌ 清理天数必须在1-7天之间")
+            return
+        
+        await ctx.send(f"🧹 开始清理最近{days}天的无用消息...")
+        
+        try:
+            deleted_count = await self.channel_cleaner.manual_cleanup(days=days)
+            await ctx.send(f"✅ 清理完成！共删除了 {deleted_count} 条无用消息")
+        except Exception as e:
+            self.logger.error(f"手动清理失败: {e}")
+            await ctx.send(f"❌ 清理失败: {str(e)}")
+    
+    @commands.command(name='cleanup_channel')
+    @commands.has_permissions(administrator=True)
+    async def cleanup_specific_channel(self, ctx, channel_id: str, days: int = 1):
+        """清理指定频道的无用消息（仅管理员）"""
+        if days < 1 or days > 7:
+            await ctx.send("❌ 清理天数必须在1-7天之间")
+            return
+            
+        try:
+            channel = self.get_channel(int(channel_id))
+            if not channel:
+                await ctx.send(f"❌ 找不到频道 ID: {channel_id}")
+                return
+                
+            await ctx.send(f"🧹 开始清理频道 #{channel.name} 最近{days}天的无用消息...")
+            
+            deleted_count = await self.channel_cleaner.manual_cleanup(channel_id=channel_id, days=days)
+            await ctx.send(f"✅ 清理完成！在频道 #{channel.name} 中删除了 {deleted_count} 条无用消息")
+        except ValueError:
+            await ctx.send("❌ 无效的频道ID")
+        except Exception as e:
+            self.logger.error(f"清理指定频道失败: {e}")
+            await ctx.send(f"❌ 清理失败: {str(e)}")
+    
+    @commands.command(name='cleanup_status')
+    @commands.has_permissions(administrator=True)
+    async def cleanup_status_command(self, ctx):
+        """查看频道清理服务状态（仅管理员）"""
+        try:
+            stats = await self.channel_cleaner.get_cleanup_stats()
+            
+            embed = discord.Embed(
+                title="🧹 频道清理服务状态",
+                color=0x00ff00 if stats['is_running'] else 0xff0000
+            )
+            
+            embed.add_field(
+                name="服务状态", 
+                value="🟢 运行中" if stats['is_running'] else "🔴 已停止", 
+                inline=True
+            )
+            embed.add_field(
+                name="清理状态", 
+                value="🧹 清理中" if stats['is_cleaning'] else "⏸️ 空闲", 
+                inline=True
+            )
+            embed.add_field(
+                name="监控频道数", 
+                value=f"{stats['monitor_channels']} 个", 
+                inline=True
+            )
+            
+            if stats['next_cleanup']:
+                embed.add_field(
+                    name="下次清理时间", 
+                    value=stats['next_cleanup'].strftime("%Y-%m-%d %H:%M:%S"), 
+                    inline=False
+                )
+            
+            embed.set_footer(text="每日自动清理时间: 凌晨2点 (UTC)")
+            await ctx.send(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"获取清理状态失败: {e}")
+            await ctx.send(f"❌ 获取状态失败: {str(e)}")
+    
+    @commands.command(name='help_admin')
+    @commands.has_permissions(administrator=True)
+    async def help_admin_command(self, ctx):
+        """显示管理员命令帮助"""
+        embed = discord.Embed(
+            title="🛠️ 管理员命令帮助",
+            description="以下是所有可用的管理员命令：",
+            color=0x0099ff
+        )
+        
+        # VIP管理命令
+        embed.add_field(
+            name="👑 VIP管理命令",
+            value=(
+                "`!exempt_add <用户ID> [原因]` - 添加豁免用户\n"
+                "`!exempt_remove <用户ID>` - 移除豁免用户\n"
+                "`!exempt_list` - 查看豁免用户列表"
+            ),
+            inline=False
+        )
+        
+        # 频道清理命令
+        embed.add_field(
+            name="🧹 频道清理命令",
+            value=(
+                "`!cleanup_now [天数]` - 手动清理所有监控频道（1-7天）\n"
+                "`!cleanup_channel <频道ID> [天数]` - 清理指定频道\n"
+                "`!cleanup_status` - 查看清理服务状态"
+            ),
+            inline=False
+        )
+        
+        # 其他命令
+        embed.add_field(
+            name="📊 其他命令",
+            value=(
+                "`!quota` - 查看配额状态\n"
+                "`!ping` - 测试机器人延迟\n"
+                "`!info` - 查看机器人信息"
+            ),
+            inline=False
+        )
+        
+        embed.set_footer(text="注意：清理功能会自动识别并保留有用的股票命令和重要消息")
         await ctx.send(embed=embed)
