@@ -44,10 +44,14 @@ class ChartService:
                 symbol = match.group(1).upper()
                 timeframe = match.group(2).lower()
                 
-                # 验证时间框架格式
-                if re.match(r'\d+[smhdwMy]$', timeframe):
+                # 验证时间框架格式 - 检查是否为支持的时间框架
+                valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w', '1M']
+                if timeframe in valid_timeframes:
                     self.logger.info(f'解析命令成功: symbol={symbol}, timeframe={timeframe}')
                     return symbol, timeframe
+                else:
+                    self.logger.warning(f'无效时间框架: {timeframe}，支持的格式: {valid_timeframes}')
+                    return None
         
         self.logger.warning(f'无法解析命令: {content}')
         return None
@@ -70,7 +74,10 @@ class ChartService:
             '1M': '1M'
         }
         
-        return timeframe_map.get(timeframe, timeframe)
+        normalized = timeframe_map.get(timeframe)
+        if normalized is None:
+            self.logger.warning(f'不支持的时间框架: {timeframe}')
+        return normalized
     
     async def get_chart(self, symbol: str, timeframe: str) -> Optional[bytes]:
         """
@@ -79,6 +86,9 @@ class ChartService:
         """
         try:
             normalized_timeframe = self.normalize_timeframe(timeframe)
+            if normalized_timeframe is None:
+                self.logger.error(f'不支持的时间框架: {timeframe}')
+                return None
             
             # 确保symbol包含交易所前缀
             if ':' not in symbol:
