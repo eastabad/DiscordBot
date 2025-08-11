@@ -97,6 +97,25 @@ class DiscordBot(commands.Bot):
             str(message.channel.id) in self.config.monitor_channel_ids
         )
         
+        # 检查命令（包括管理员命令） - 优先级最高
+        if '!' in message.content:
+            # 提取命令部分（可能在角色提及之后）
+            command_part = None
+            content_parts = message.content.split()
+            for part in content_parts:
+                if part.startswith('!'):
+                    command_part = part
+                    break
+            
+            if command_part:
+                self.logger.info(f'检测到命令: {command_part}')
+                # 创建一个临时的消息内容只包含命令
+                original_content = message.content
+                message.content = command_part
+                await self.process_commands(message)
+                message.content = original_content  # 恢复原始内容
+                return
+        
         if is_mentioned and is_monitored_channel and self.has_stock_command(message.content):
             self.logger.info(f'在监控频道中检测到提及和股票命令，开始处理股票图表请求...')
             await self.handle_chart_request(message)
@@ -125,11 +144,6 @@ class DiscordBot(commands.Bot):
         elif is_monitored_channel and message.attachments and self.has_chart_image(message.attachments):
             self.logger.info(f'在监控频道中检测到图表图片，开始处理图表分析...')
             await self.handle_chart_analysis_request(message)
-        # 检查命令（包括管理员命令）
-        elif message.content.startswith('!'):
-            self.logger.info(f'检测到命令: {message.content[:30]}')
-            await self.process_commands(message)
-            return
         else:
             self.logger.debug(f'消息不包含提及或股票命令: {message.content[:30]}')
     
