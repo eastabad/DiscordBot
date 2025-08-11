@@ -45,11 +45,11 @@ TSLA,4h
 - `TRADINGVIEW_SESSION_ID_SIGN` - TradingView会话签名
 
 ### 技术指标加载优化：
-- 使用Advanced Chart API + 自定义TradingView布局ID
+- 使用Layout Chart Storage API确保指标完全加载
+- 5秒延迟等待技术指标渲染完成
 - 生成1920x1080高分辨率图表
-- 深色主题设计，专业股票图表外观
-- 120秒API超时设置，处理复杂图表生成
-- 完全自定义的技术指标和布局配置
+- 云存储响应，提供稳定的图片URL
+- 完全自定义的TradingView布局和技术指标
 
 ### 示例响应：
 

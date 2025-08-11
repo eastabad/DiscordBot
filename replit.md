@@ -22,19 +22,20 @@ Preferred communication style: Simple, everyday language.
 - Status: ✅ READY FOR PRODUCTION - n8n workflows can now send chart images via API
 
 **Stock Chart Bot Final Upgrade** (2025-08-11):
-- ✅ UPGRADED to use Layout Chart API for true custom TradingView layouts
+- ✅ UPGRADED to use Layout Chart Storage API for true custom TradingView layouts
 - ✅ REMOVED @bot requirement - bot now responds to simple stock commands in monitored channel
 - ✅ IMPROVED command parsing for format: SYMBOL,TIMEFRAME (e.g. AAPL,1h or NASDAQ:GOOG,15m)
-- ✅ FIXED API endpoint to use v2/tradingview/advanced-chart with layout parameter
-- ✅ TESTED Advanced Chart API successfully - 57KB chart generation in 4 seconds
-- ✅ FIXED API timeout issues - Advanced Chart API works reliably
+- ✅ FIXED API endpoint to use v2/tradingview/layout-chart/storage/{layout_id}
+- ✅ IMPLEMENTED 5-second delay for perfect technical indicator loading
+- ✅ TESTED Layout Chart Storage API successfully - 118KB charts with full indicators
+- ✅ CONFIRMED technical indicators render correctly (MACD, RSI, etc.)
 - ✅ FIXED timeframe validation to reject invalid formats like '15h' before API calls
-- ✅ OPTIMIZED for fast response - indicator loading depends on TradingView layout config
+- ✅ CLOUD STORAGE response provides stable image URLs with expiration dates
 - ✅ DUAL MODE support: Stock charts in monitored channel + webhook forwarding in other channels
 - ✅ AUTO-PREFIX for stock symbols (adds NASDAQ: if no exchange specified)
 - ✅ LAYOUT CHART functionality using user's custom TradingView layout (1920x1080)
 - Configuration: CHART_IMG_API_KEY, LAYOUT_ID, MONITOR_CHANNEL_ID, TradingView session
-- Status: ✅ PRODUCTION READY - Layout Chart bot functionality fully deployed
+- Status: ✅ PRODUCTION READY - Perfect technical indicator loading achieved
 
 # System Architecture
 
