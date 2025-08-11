@@ -94,14 +94,19 @@ class ChartAnalysisService:
                 "support_resistance": support_resistance,
                 "rating_panel": rating_analysis,
                 "wave_matrix": wave_matrix
-            },
-            "overall_sentiment": self.calculate_overall_sentiment(
-                ai_trend_signal, trend_tracer, ema_analysis, rating_analysis, wave_matrix
-            ),
-            "confidence_level": self.calculate_confidence_level(composite_seed),
-            "trading_recommendation": "",
-            "disclaimer": "此分析基于图表识别技术，仅供参考，投资有风险"
+            }
         }
+        
+        # 计算整体情绪
+        analysis["overall_sentiment"] = self.calculate_overall_sentiment(
+            ai_trend_signal, trend_tracer, ema_analysis, rating_analysis, wave_matrix
+        )
+        
+        # 计算置信度
+        analysis["confidence_level"] = self.calculate_confidence_level(composite_seed)
+        
+        # 添加免责声明
+        analysis["disclaimer"] = "此分析基于图表识别技术，仅供参考，投资有风险"
         
         # 生成综合交易建议
         analysis["trading_recommendation"] = self.generate_comprehensive_recommendation(analysis)
