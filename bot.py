@@ -134,6 +134,7 @@ class DiscordBot(commands.Bot):
                 # 用户已超过每日限制
                 limit_msg = f"⚠️ {username}, 您今日的图表请求已达到限制 (3次/天)。请明天再试。"
                 await message.reply(limit_msg)
+                await message.add_reaction("❌")
                 self.logger.warning(f"用户 {username} ({user_id}) 超过每日请求限制: {current_count}/3")
                 return
             
@@ -141,8 +142,13 @@ class DiscordBot(commands.Bot):
             command_result = self.chart_service.parse_command(message.content)
             if not command_result:
                 await message.channel.send(
-                    f"{message.author.mention} 请使用正确格式：`AAPL,1h` 或 `NASDAQ:GOOG,15m`"
+                    f"{message.author.mention} ❌ 命令格式错误！\n" +
+                    f"请使用正确格式：\n" +
+                    f"• `AAPL,1h` 或 `AAPL，1h`（支持中英文逗号）\n" +
+                    f"• `NASDAQ:GOOG,15m`\n" +
+                    f"• 支持时间框架：1m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h, 1d, 1w, 1M"
                 )
+                await message.add_reaction("❌")
                 return
             
             symbol, timeframe = command_result
@@ -193,7 +199,12 @@ class DiscordBot(commands.Bot):
             else:
                 # 获取图表失败
                 error_msg = self.chart_service.format_error_message(symbol, timeframe, "API调用失败")
-                await message.channel.send(f"{message.author.mention} {error_msg}")
+                detailed_error = (f"{message.author.mention} ❌ 获取图表失败！\n"
+                                f"• 符号: {symbol}\n"
+                                f"• 时间框架: {timeframe}\n" 
+                                f"• 可能原因: API服务暂时不可用，请稍后重试\n"
+                                f"• 如果问题持续，请检查股票符号是否正确")
+                await message.channel.send(detailed_error)
                 
                 await message.remove_reaction("⏳", self.user)
                 await message.add_reaction("❌")
