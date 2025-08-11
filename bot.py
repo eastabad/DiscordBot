@@ -125,15 +125,13 @@ class DiscordBot(commands.Bot):
         elif is_monitored_channel and message.attachments and self.has_chart_image(message.attachments):
             self.logger.info(f'在监控频道中检测到图表图片，开始处理图表分析...')
             await self.handle_chart_analysis_request(message)
-        # 检查管理员命令
-        elif self.has_admin_command(message.content):
-            self.logger.info(f'检测到管理员命令: {message.content[:30]}')
-            await self.handle_admin_command(message)
+        # 检查命令（包括管理员命令）
+        elif message.content.startswith('!'):
+            self.logger.info(f'检测到命令: {message.content[:30]}')
+            await self.process_commands(message)
+            return
         else:
             self.logger.debug(f'消息不包含提及或股票命令: {message.content[:30]}')
-            
-        # 处理命令
-        await self.process_commands(message)
     
     async def handle_chart_request(self, message):
         """处理股票图表请求"""
@@ -1133,9 +1131,14 @@ class DiscordBot(commands.Bot):
         await ctx.send(embed=embed)
     
     @commands.command(name='cleanup_now')
-    @commands.has_permissions(administrator=True)
     async def manual_cleanup_command(self, ctx, days: int = 1):
         """手动清理频道无用消息（仅管理员）"""
+        # 检查管理员权限
+        admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
+        if str(ctx.author.id) not in admin_users:
+            await ctx.send("❌ 此命令仅限管理员使用")
+            return
+            
         if days < 1 or days > 7:
             await ctx.send("❌ 清理天数必须在1-7天之间")
             return
@@ -1150,9 +1153,14 @@ class DiscordBot(commands.Bot):
             await ctx.send(f"❌ 清理失败: {str(e)}")
     
     @commands.command(name='cleanup_channel')
-    @commands.has_permissions(administrator=True)
     async def cleanup_specific_channel(self, ctx, channel_id: str, days: int = 1):
         """清理指定频道的无用消息（仅管理员）"""
+        # 检查管理员权限
+        admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
+        if str(ctx.author.id) not in admin_users:
+            await ctx.send("❌ 此命令仅限管理员使用")
+            return
+            
         if days < 1 or days > 7:
             await ctx.send("❌ 清理天数必须在1-7天之间")
             return
@@ -1174,9 +1182,14 @@ class DiscordBot(commands.Bot):
             await ctx.send(f"❌ 清理失败: {str(e)}")
     
     @commands.command(name='cleanup_status')
-    @commands.has_permissions(administrator=True)
     async def cleanup_status_command(self, ctx):
         """查看频道清理服务状态（仅管理员）"""
+        # 检查管理员权限
+        admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
+        if str(ctx.author.id) not in admin_users:
+            await ctx.send("❌ 此命令仅限管理员使用")
+            return
+            
         try:
             stats = await self.channel_cleaner.get_cleanup_stats()
             
@@ -1216,9 +1229,14 @@ class DiscordBot(commands.Bot):
             await ctx.send(f"❌ 获取状态失败: {str(e)}")
     
     @commands.command(name='help_admin')
-    @commands.has_permissions(administrator=True)
     async def help_admin_command(self, ctx):
         """显示管理员命令帮助"""
+        # 检查管理员权限
+        admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
+        if str(ctx.author.id) not in admin_users:
+            await ctx.send("❌ 此命令仅限管理员使用")
+            return
+            
         embed = discord.Embed(
             title="🛠️ 管理员命令帮助",
             description="以下是所有可用的管理员命令：",
