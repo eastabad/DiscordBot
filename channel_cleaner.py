@@ -221,9 +221,13 @@ class ChannelCleaner:
         
         # 支持多频道配置
         if hasattr(self.config, 'monitor_channel_ids') and self.config.monitor_channel_ids:
-            # 多频道格式: "id1,id2,id3"
-            channel_ids = [cid.strip() for cid in self.config.monitor_channel_ids.split(',')]
-            monitor_channels.extend(channel_ids)
+            # 检查是否为列表格式
+            if isinstance(self.config.monitor_channel_ids, list):
+                monitor_channels.extend(self.config.monitor_channel_ids)
+            else:
+                # 字符串格式: "id1,id2,id3"
+                channel_ids = [cid.strip() for cid in self.config.monitor_channel_ids.split(',')]
+                monitor_channels.extend(channel_ids)
         elif hasattr(self.config, 'monitor_channel_id') and self.config.monitor_channel_id:
             # 单频道格式 (向后兼容)
             monitor_channels.append(self.config.monitor_channel_id)
