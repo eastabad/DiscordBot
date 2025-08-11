@@ -29,6 +29,8 @@ Preferred communication style: Simple, everyday language.
 - ✅ IMPLEMENTED 5-second delay for perfect technical indicator loading
 - ✅ TESTED Layout Chart Storage API successfully - 118KB charts with full indicators
 - ✅ CONFIRMED technical indicators render correctly (MACD, RSI, etc.)
+- ✅ INCREASED timeout to 180 seconds for Layout Chart Storage API requirements
+- ✅ SUPPORTS community scripts and private indicators per TradingView subscription
 - ✅ FIXED timeframe validation to reject invalid formats like '15h' before API calls
 - ✅ CLOUD STORAGE response provides stable image URLs with expiration dates
 - ✅ DUAL MODE support: Stock charts in monitored channel + webhook forwarding in other channels

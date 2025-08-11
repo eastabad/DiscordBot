@@ -47,9 +47,11 @@ TSLA,4h
 ### 技术指标加载优化：
 - 使用Layout Chart Storage API确保指标完全加载
 - 5秒延迟等待技术指标渲染完成
+- 180秒超时设置，适配Layout Chart Storage API要求
 - 生成1920x1080高分辨率图表
 - 云存储响应，提供稳定的图片URL
 - 完全自定义的TradingView布局和技术指标
+- 支持社区脚本和私有指标（根据TradingView订阅计划）
 
 ### 示例响应：
 

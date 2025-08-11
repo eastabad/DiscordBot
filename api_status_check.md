@@ -27,7 +27,11 @@
 - Layout Chart API: ❌ 超时失败 (路径错误)
 
 ## 解决方案
-使用 `/v2/tradingview/advanced-chart` + layout参数 = 成功
-这个端点支持自定义TradingView布局，生成高质量图表
+使用 `/v2/tradingview/layout-chart/storage/{layout_id}` + 5秒延迟 = 完美
+这个端点专门为Layout Chart Storage设计，支持：
+- 技术指标完全加载（MACD、RSI等）
+- 社区脚本和私有指标
+- 180秒超时确保处理完成
+- 云存储URL响应
 
-时间: 2025-08-11 17:35 - 问题已解决
+时间: 2025-08-11 17:47 - Layout Chart Storage API优化完成

@@ -122,7 +122,7 @@ class ChartService:
                     self.api_url,
                     json=payload,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=120)  # 120秒超时（包含API处理时间）
+                    timeout=aiohttp.ClientTimeout(total=180)  # 180秒超时（Layout Chart Storage需要更长时间）
                 ) as response:
                     
                     if response.status == 200:
