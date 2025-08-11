@@ -27,6 +27,13 @@ class Config:
         self.discord_token = os.getenv('DISCORD_TOKEN')
         self.webhook_url = os.getenv('WEBHOOK_URL')
         
+        # Chart-img API配置
+        self.chart_img_api_key = os.getenv('CHART_IMG_API_KEY')
+        self.layout_id = os.getenv('LAYOUT_ID')
+        self.tradingview_session_id = os.getenv('TRADINGVIEW_SESSION_ID')
+        self.tradingview_session_id_sign = os.getenv('TRADINGVIEW_SESSION_ID_SIGN')
+        self.monitor_channel_id = os.getenv('MONITOR_CHANNEL_ID')
+        
         # 可选配置
         self.log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
         self.max_retries = int(os.getenv('MAX_RETRIES', '3'))

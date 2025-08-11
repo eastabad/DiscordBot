@@ -8,6 +8,8 @@ from discord.ext import commands
 import logging
 from datetime import datetime
 from webhook_handler import WebhookHandler
+from chart_service import ChartService
+import io
 
 class DiscordBot(commands.Bot):
     """Discord机器人类"""
@@ -28,6 +30,7 @@ class DiscordBot(commands.Bot):
         
         self.config = config
         self.webhook_handler = WebhookHandler(config.webhook_url)
+        self.chart_service = ChartService(config)
         self.logger = logging.getLogger(__name__)
         
     async def on_ready(self):
@@ -43,9 +46,15 @@ class DiscordBot(commands.Bot):
         await self.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.watching,
-                name="@提及消息"
+                name="股票图表请求"
             )
         )
+        
+        # 输出监控频道信息
+        if self.config.monitor_channel_id:
+            self.logger.info(f'监控频道ID: {self.config.monitor_channel_id}')
+        else:
+            self.logger.warning('未设置监控频道ID')
         
     async def on_message(self, message):
         """消息事件处理"""
@@ -69,14 +78,90 @@ class DiscordBot(commands.Bot):
                        f'<@{self.user.id}>' in message.content or
                        f'<@!{self.user.id}>' in message.content)
         
-        if is_mentioned:
-            self.logger.info(f'检测到@提及，开始处理...')
+        # 检查是否在监控频道中
+        is_monitored_channel = (
+            self.config.monitor_channel_id and 
+            str(message.channel.id) == self.config.monitor_channel_id
+        )
+        
+        if is_mentioned and is_monitored_channel:
+            self.logger.info(f'在监控频道中检测到@提及，开始处理股票图表请求...')
+            await self.handle_chart_request(message)
+        elif is_mentioned:
+            self.logger.info(f'检测到@提及，开始处理webhook转发...')
             await self.handle_mention(message)
         else:
             self.logger.debug(f'消息不包含@提及: {message.content[:30]}')
             
         # 处理命令
         await self.process_commands(message)
+    
+    async def handle_chart_request(self, message):
+        """处理股票图表请求"""
+        try:
+            # 解析命令
+            command_result = self.chart_service.parse_command(message.content)
+            if not command_result:
+                await message.channel.send(
+                    f"{message.author.mention} 请使用正确格式：`@bot AAPL,1h` 或 `@bot NASDAQ:GOOG,15m`"
+                )
+                return
+            
+            symbol, timeframe = command_result
+            
+            # 添加处理中的反应
+            await message.add_reaction("⏳")
+            
+            # 获取图表
+            self.logger.info(f"开始获取图表: {symbol} {timeframe}")
+            chart_data = await self.chart_service.get_chart(symbol, timeframe)
+            
+            if chart_data:
+                # 发送私信
+                try:
+                    dm_content = self.chart_service.format_chart_dm_content(symbol, timeframe)
+                    file = discord.File(
+                        io.BytesIO(chart_data), 
+                        filename=f"{symbol}_{timeframe}.png"
+                    )
+                    
+                    await message.author.send(content=dm_content, file=file)
+                    
+                    # 在频道中提示成功
+                    success_msg = self.chart_service.format_success_message(symbol, timeframe)
+                    await message.channel.send(f"{message.author.mention} {success_msg}")
+                    
+                    # 更新反应为成功
+                    await message.remove_reaction("⏳", self.user)
+                    await message.add_reaction("✅")
+                    
+                    self.logger.info(f"成功发送图表: {symbol} {timeframe} 给用户 {message.author.name}")
+                    
+                except discord.Forbidden:
+                    await message.channel.send(
+                        f"{message.author.mention} 无法发送私信，请检查您的隐私设置"
+                    )
+                    await message.remove_reaction("⏳", self.user)
+                    await message.add_reaction("❌")
+                    
+            else:
+                # 获取图表失败
+                error_msg = self.chart_service.format_error_message(symbol, timeframe, "API调用失败")
+                await message.channel.send(f"{message.author.mention} {error_msg}")
+                
+                await message.remove_reaction("⏳", self.user)
+                await message.add_reaction("❌")
+                
+        except Exception as e:
+            self.logger.error(f"处理图表请求失败: {e}")
+            await message.channel.send(
+                f"{message.author.mention} 处理请求时发生错误，请稍后重试"
+            )
+            try:
+                await message.remove_reaction("⏳", self.user)
+                await message.add_reaction("❌")
+            except:
+                pass
         
     async def handle_mention(self, message):
         """处理@提及的消息"""
