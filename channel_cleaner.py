@@ -187,33 +187,9 @@ class ChannelCleaner:
     
     async def _is_useless_message(self, message) -> bool:
         """判断消息是否为无用消息"""
-        content = message.content.lower().strip()
-        
-        # 空消息或只有表情符号的消息
-        if not content or len(content) < 3:
-            return True
-        
-        # 首先检查是否为有用消息
-        for pattern in self.useful_patterns:
-            if re.search(pattern, content, re.IGNORECASE):
-                return False
-        
-        # 检查是否为无用消息
-        for pattern in self.useless_patterns:
-            if re.search(pattern, content, re.IGNORECASE):
-                return True
-        
-        # 检查是否为纯表情符号消息
-        emoji_pattern = r'^[😀-🙏🎯-🎲🏀-🏈⚽🚗-🚙🛩️-🛫]+$'
-        if re.match(emoji_pattern, content):
-            return True
-        
-        # 检查是否为无意义的短消息
-        meaningless_words = ['ok', 'okay', '好的', '收到', '了解', '明白', 'got it', 'thanks', '谢谢', 'thx']
-        if content in meaningless_words:
-            return True
-        
-        return False
+        # 删除所有用户消息（非机器人消息）
+        # 只保留机器人自己发送的消息
+        return not message.author.bot
     
     def _get_monitor_channels(self) -> List[str]:
         """获取监控频道列表"""
