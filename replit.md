@@ -6,6 +6,14 @@ This is a Discord bot application written in Python that monitors Discord channe
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Issues & Solutions
+
+**Discord Bot Message Handling Issue** (2025-08-11):
+- Problem: Bot connects successfully but doesn't respond to messages or @mentions
+- Root Cause: MESSAGE CONTENT INTENT not enabled in Discord Developer Portal
+- Solution: User needs to enable "MESSAGE CONTENT INTENT" in Discord Developer Portal > Bot settings > Privileged Gateway Intents
+- Status: Waiting for user to configure Discord Developer Portal settings
+
 # System Architecture
 
 ## Core Components

@@ -17,6 +17,8 @@ class DiscordBot(commands.Bot):
         # 设置机器人意图
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.messages = True
+        intents.guild_messages = True
         
         super().__init__(
             command_prefix='!',
@@ -33,6 +35,9 @@ class DiscordBot(commands.Bot):
         if self.user:
             self.logger.info(f'机器人已登录: {self.user.name} (ID: {self.user.id})')
             self.logger.info(f'机器人在 {len(self.guilds)} 个服务器中')
+            
+            # 输出机器人的意图信息用于调试
+            self.logger.info(f'机器人意图: message_content={self.intents.message_content}, messages={self.intents.messages}, guild_messages={self.intents.guild_messages}')
         
         # 设置机器人状态
         await self.change_presence(
@@ -44,13 +49,20 @@ class DiscordBot(commands.Bot):
         
     async def on_message(self, message):
         """消息事件处理"""
+        # 添加调试日志
+        self.logger.debug(f'收到消息: {message.content[:50]}... 来自: {message.author.name}')
+        
         # 忽略机器人自己的消息
         if message.author == self.user:
+            self.logger.debug('忽略机器人自己的消息')
             return
             
         # 检查是否被@提及
         if self.user in message.mentions:
+            self.logger.info(f'检测到@提及，开始处理...')
             await self.handle_mention(message)
+        else:
+            self.logger.debug(f'消息不包含@提及: {message.content[:30]}')
             
         # 处理命令
         await self.process_commands(message)

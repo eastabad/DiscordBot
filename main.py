@@ -13,7 +13,7 @@ from config import Config
 def setup_logging():
     """设置日志配置"""
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler('discord_bot.log', encoding='utf-8'),
