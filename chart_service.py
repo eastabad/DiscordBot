@@ -31,11 +31,10 @@ class ChartService:
         
         # 移除@提及检查，直接解析命令
         
-        # 匹配模式: 股票符号,时间框架
+        # 匹配模式: 股票符号,时间框架 (支持中英文逗号)
         patterns = [
-            r'([A-Z][A-Z:]*[A-Z]),\s*(\d+[smhdwMy])',  # AAPL,15h 或 NASDAQ:AAPL,1d
-            r'([A-Z][A-Z:]*[A-Z])\s+(\d+[smhdwMy])',   # AAPL 15h
-            r'([A-Z][A-Z:]*[A-Z]),(\d+[smhdwMy])',     # AAPL,15h (无空格)
+            r'([A-Z][A-Z:]*[A-Z])[,，]\s*(\d+[smhdwMy])',  # AAPL,15h 或 AAPL，15m (中英文逗号)
+            r'([A-Z][A-Z:]*[A-Z])\s+(\d+[smhdwMy])',        # AAPL 15h (空格分隔)
         ]
         
         for pattern in patterns:
