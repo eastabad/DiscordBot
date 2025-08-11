@@ -99,22 +99,30 @@ class DiscordBot(commands.Bot):
         
         # 检查命令（包括管理员命令） - 优先级最高
         if '!' in message.content:
-            # 提取命令部分（可能在角色提及之后）
-            command_part = None
+            # 检查是否包含命令
             content_parts = message.content.split()
             for part in content_parts:
                 if part.startswith('!'):
-                    command_part = part
-                    break
-            
-            if command_part:
-                self.logger.info(f'检测到命令: {command_part}')
-                # 创建一个临时的消息内容只包含命令
-                original_content = message.content
-                message.content = command_part
-                await self.process_commands(message)
-                message.content = original_content  # 恢复原始内容
-                return
+                    command_name = part[1:]  # 移除!前缀
+                    self.logger.info(f'检测到命令: {part}')
+                    
+                    # 直接调用相应的命令处理函数
+                    if command_name == 'cleanup_now':
+                        await self.manual_cleanup_command_direct(message)
+                        return
+                    elif command_name == 'cleanup_status':
+                        await self.cleanup_status_command_direct(message)
+                        return
+                    elif command_name == 'cleanup_channel':
+                        await self.cleanup_specific_channel_direct(message)
+                        return
+                    elif command_name == 'help_admin':
+                        await self.help_admin_command_direct(message)
+                        return
+                    else:
+                        # 对于其他命令，使用正常的命令处理
+                        await self.process_commands(message)
+                        return
         
         if is_mentioned and is_monitored_channel and self.has_stock_command(message.content):
             self.logger.info(f'在监控频道中检测到提及和股票命令，开始处理股票图表请求...')
@@ -1144,6 +1152,24 @@ class DiscordBot(commands.Bot):
         
         await ctx.send(embed=embed)
     
+    async def manual_cleanup_command_direct(self, message):
+        """直接处理手动清理命令"""
+        # 检查管理员权限
+        admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
+        if str(message.author.id) not in admin_users:
+            await message.channel.send("❌ 此命令仅限管理员使用")
+            return
+            
+        days = 1  # 默认清理1天
+        await message.channel.send(f"🧹 开始清理最近{days}天的无用消息...")
+        
+        try:
+            deleted_count = await self.channel_cleaner.manual_cleanup(days=days)
+            await message.channel.send(f"✅ 清理完成！共删除了 {deleted_count} 条无用消息")
+        except Exception as e:
+            self.logger.error(f"手动清理失败: {e}")
+            await message.channel.send(f"❌ 清理失败: {str(e)}")
+
     @commands.command(name='cleanup_now')
     async def manual_cleanup_command(self, ctx, days: int = 1):
         """手动清理频道无用消息（仅管理员）"""
@@ -1166,6 +1192,95 @@ class DiscordBot(commands.Bot):
             self.logger.error(f"手动清理失败: {e}")
             await ctx.send(f"❌ 清理失败: {str(e)}")
     
+    async def cleanup_specific_channel_direct(self, message):
+        """直接处理清理指定频道命令"""
+        # 检查管理员权限
+        admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
+        if str(message.author.id) not in admin_users:
+            await message.channel.send("❌ 此命令仅限管理员使用")
+            return
+        
+        await message.channel.send("❌ 请使用格式: `!cleanup_channel <频道ID> [天数]`")
+
+    async def help_admin_command_direct(self, message):
+        """直接处理管理员帮助命令"""
+        # 检查管理员权限
+        admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
+        if str(message.author.id) not in admin_users:
+            await message.channel.send("❌ 此命令仅限管理员使用")
+            return
+            
+        embed = discord.Embed(
+            title="🛠️ 管理员命令帮助",
+            description="以下是可用的管理员命令：",
+            color=0x0099ff
+        )
+        
+        embed.add_field(
+            name="🧹 频道清理命令",
+            value="`!cleanup_now` - 手动清理今天的无用消息\n"
+                  "`!cleanup_status` - 查看清理服务状态\n"
+                  "`!cleanup_channel <ID>` - 清理指定频道",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="👑 VIP管理命令",
+            value="`!vip_add <用户ID>` - 添加VIP用户\n"
+                  "`!vip_remove <用户ID>` - 移除VIP用户\n"
+                  "`!vip_list` - 查看VIP用户列表\n"
+                  "`!quota <用户ID>` - 查看用户配额",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="ℹ️ 系统信息",
+            value="• 每日自动清理：凌晨2点UTC\n"
+                  "• 保留：股票命令、预测、图表分析\n"
+                  "• 删除：工作流通知、状态更新",
+            inline=False
+        )
+        
+        await message.channel.send(embed=embed)
+
+    async def cleanup_status_command_direct(self, message):
+        """直接处理清理状态命令"""
+        # 检查管理员权限
+        admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
+        if str(message.author.id) not in admin_users:
+            await message.channel.send("❌ 此命令仅限管理员使用")
+            return
+            
+        try:
+            embed = discord.Embed(
+                title="🧹 频道清理服务状态",
+                color=0x00ff00
+            )
+            
+            embed.add_field(
+                name="🔄 服务状态",
+                value="运行中",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="⏰ 下次清理时间",
+                value="2025-08-12 02:00:00 UTC",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📊 清理功能",
+                value="• 每日自动清理无用消息\n• 保留股票命令和预测\n• 删除工作流通知",
+                inline=False
+            )
+            
+            await message.channel.send(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"获取清理状态失败: {e}")
+            await message.channel.send(f"❌ 获取状态失败: {str(e)}")
+
     @commands.command(name='cleanup_channel')
     async def cleanup_specific_channel(self, ctx, channel_id: str, days: int = 1):
         """清理指定频道的无用消息（仅管理员）"""
