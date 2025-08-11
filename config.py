@@ -32,7 +32,16 @@ class Config:
         self.layout_id = os.getenv('LAYOUT_ID')
         self.tradingview_session_id = os.getenv('TRADINGVIEW_SESSION_ID')
         self.tradingview_session_id_sign = os.getenv('TRADINGVIEW_SESSION_ID_SIGN')
-        self.monitor_channel_id = os.getenv('MONITOR_CHANNEL_ID')
+        
+        # 支持多个监控频道
+        monitor_channels_str = os.getenv('MONITOR_CHANNEL_IDS')
+        if monitor_channels_str:
+            # 支持逗号分隔的多个频道ID
+            self.monitor_channel_ids = [id.strip() for id in monitor_channels_str.split(',') if id.strip()]
+        else:
+            # 向后兼容单个频道配置
+            single_channel = os.getenv('MONITOR_CHANNEL_ID')
+            self.monitor_channel_ids = [single_channel] if single_channel else []
         
         # 可选配置
         self.log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
@@ -66,6 +75,9 @@ class Config:
             errors.append('WEBHOOK_URL未设置')
         elif not self.webhook_url.startswith(('http://', 'https://')):
             errors.append('WEBHOOK_URL必须是有效的HTTP(S) URL')
+            
+        if not self.monitor_channel_ids:
+            errors.append('MONITOR_CHANNEL_IDS或MONITOR_CHANNEL_ID未设置')
             
         if self.max_retries < 1:
             errors.append('MAX_RETRIES必须大于0')

@@ -54,8 +54,8 @@ class DiscordBot(commands.Bot):
         )
         
         # 输出监控频道信息
-        if self.config.monitor_channel_id:
-            self.logger.info(f'监控频道ID: {self.config.monitor_channel_id}')
+        if self.config.monitor_channel_ids:
+            self.logger.info(f'监控频道IDs: {", ".join(self.config.monitor_channel_ids)}')
         else:
             self.logger.warning('未设置监控频道ID')
         
@@ -83,8 +83,8 @@ class DiscordBot(commands.Bot):
         
         # 检查是否在监控频道中
         is_monitored_channel = (
-            self.config.monitor_channel_id and 
-            str(message.channel.id) == self.config.monitor_channel_id
+            self.config.monitor_channel_ids and 
+            str(message.channel.id) in self.config.monitor_channel_ids
         )
         
         if is_mentioned and is_monitored_channel:
