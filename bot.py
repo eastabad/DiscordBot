@@ -223,24 +223,27 @@ class DiscordBot(commands.Bot):
                 
     async def build_message_data(self, message):
         """构建要发送到webhook的消息数据"""
-        # 获取频道信息
-        channel_info = {
-            'id': message.channel.id,
-            'name': message.channel.name,
-            'type': str(message.channel.type),
-            'guild_id': message.guild.id if message.guild else None,
-            'guild_name': message.guild.name if message.guild else None
-        }
+        # 获取详细的频道信息
+        channel_info = await self.collect_detailed_channel_info(message.channel)
         
-        # 获取作者信息
+        # 获取服务器信息
+        guild_info = await self.collect_guild_info(message.guild) if message.guild else None
+        
+        # 获取详细的作者信息
         author_info = {
             'id': message.author.id,
             'name': message.author.name,
             'display_name': message.author.display_name,
             'discriminator': message.author.discriminator,
             'bot': message.author.bot,
-            'avatar_url': str(message.author.avatar.url) if message.author.avatar else None
+            'avatar_url': str(message.author.avatar.url) if message.author.avatar else None,
+            'created_at': message.author.created_at.isoformat() if message.author.created_at else None,
+            'public_flags': message.author.public_flags.value if hasattr(message.author, 'public_flags') else 0
         }
+        
+        # 获取用户上下文信息
+        user_context = await self.collect_user_context_info(message.author, message.guild)
+        author_info.update(user_context)
         
         # 处理附件
         attachments = []
@@ -273,6 +276,7 @@ class DiscordBot(commands.Bot):
             'edited_at': message.edited_at.isoformat() if message.edited_at else None,
             'author': author_info,
             'channel': channel_info,
+            'guild': guild_info,
             'attachments': attachments,
             'embeds': embeds,
             'mention_everyone': message.mention_everyone,
@@ -288,6 +292,184 @@ class DiscordBot(commands.Bot):
         }
         
         return message_data
+    
+    async def collect_detailed_channel_info(self, channel):
+        """收集详细的频道信息"""
+        try:
+            channel_info = {
+                'id': channel.id,
+                'name': channel.name,
+                'type': str(channel.type),
+                'created_at': channel.created_at.isoformat() if channel.created_at else None,
+                'category': None,
+                'position': getattr(channel, 'position', None),
+                'topic': getattr(channel, 'topic', None),
+                'nsfw': getattr(channel, 'nsfw', False),
+                'permissions': {},
+                'member_count': None,
+                'slowmode_delay': getattr(channel, 'slowmode_delay', 0),
+                'guild_id': channel.guild.id if hasattr(channel, 'guild') and channel.guild else None
+            }
+            
+            # 获取分类信息
+            if hasattr(channel, 'category') and channel.category:
+                channel_info['category'] = {
+                    'id': channel.category.id,
+                    'name': channel.category.name,
+                    'position': channel.category.position
+                }
+            
+            # 获取权限信息（针对文字频道）
+            if hasattr(channel, 'guild') and channel.guild:
+                try:
+                    # 获取机器人在该频道的权限
+                    bot_member = channel.guild.get_member(self.user.id)
+                    if bot_member:
+                        perms = channel.permissions_for(bot_member)
+                        channel_info['permissions'] = {
+                            'read_messages': perms.read_messages,
+                            'send_messages': perms.send_messages,
+                            'manage_messages': perms.manage_messages,
+                            'embed_links': perms.embed_links,
+                            'attach_files': perms.attach_files,
+                            'read_message_history': perms.read_message_history,
+                            'add_reactions': perms.add_reactions,
+                            'use_external_emojis': perms.use_external_emojis
+                        }
+                except Exception as e:
+                    self.logger.debug(f"获取频道权限时出错: {e}")
+            
+            # 获取成员数量（针对语音频道）
+            if hasattr(channel, 'members'):
+                channel_info['member_count'] = len(channel.members)
+                channel_info['members'] = [
+                    {
+                        'id': member.id,
+                        'name': member.name,
+                        'display_name': member.display_name
+                    } for member in channel.members[:10]  # 限制最多10个成员信息
+                ]
+            
+            return channel_info
+            
+        except Exception as e:
+            self.logger.error(f"收集频道信息时出错: {e}")
+            return {
+                'id': channel.id,
+                'name': getattr(channel, 'name', 'Unknown'),
+                'type': str(channel.type),
+                'error': str(e)
+            }
+    
+    async def collect_guild_info(self, guild):
+        """收集详细的服务器信息"""
+        if not guild:
+            return None
+            
+        try:
+            guild_info = {
+                'id': guild.id,
+                'name': guild.name,
+                'owner_id': guild.owner_id,
+                'member_count': guild.member_count,
+                'created_at': guild.created_at.isoformat() if guild.created_at else None,
+                'verification_level': str(guild.verification_level),
+                'explicit_content_filter': str(guild.explicit_content_filter),
+                'default_notifications': str(guild.default_message_notifications),
+                'features': list(guild.features),
+                'boost_level': guild.premium_tier,
+                'boost_count': guild.premium_subscription_count or 0,
+                'icon_url': str(guild.icon.url) if guild.icon else None,
+                'banner_url': str(guild.banner.url) if guild.banner else None,
+                'channels': {
+                    'total': len(guild.channels),
+                    'text': len([c for c in guild.channels if c.type.name == 'text']),
+                    'voice': len([c for c in guild.channels if c.type.name == 'voice']),
+                    'categories': len([c for c in guild.channels if c.type.name == 'category'])
+                },
+                'roles_count': len(guild.roles),
+                'emojis_count': len(guild.emojis),
+                'region': getattr(guild, 'region', 'unknown')
+            }
+            
+            # 获取活跃成员信息（最近在线的前5位）
+            active_members = []
+            try:
+                for member in guild.members[:5]:  # 限制数量
+                    if not member.bot:
+                        active_members.append({
+                            'id': member.id,
+                            'name': member.name,
+                            'display_name': member.display_name,
+                            'status': str(member.status) if hasattr(member, 'status') else 'unknown',
+                            'joined_at': member.joined_at.isoformat() if member.joined_at else None
+                        })
+                guild_info['active_members'] = active_members
+            except Exception as e:
+                self.logger.debug(f"获取活跃成员时出错: {e}")
+            
+            # 获取服务器统计信息
+            try:
+                guild_info['statistics'] = {
+                    'online_members': sum(1 for m in guild.members if hasattr(m, 'status') and m.status != discord.Status.offline),
+                    'bot_count': sum(1 for m in guild.members if m.bot),
+                    'human_count': sum(1 for m in guild.members if not m.bot)
+                }
+            except Exception as e:
+                self.logger.debug(f"计算服务器统计时出错: {e}")
+            
+            return guild_info
+            
+        except Exception as e:
+            self.logger.error(f"收集服务器信息时出错: {e}")
+            return {
+                'id': guild.id,
+                'name': guild.name,
+                'error': str(e)
+            }
+    
+    async def collect_user_context_info(self, user, guild=None):
+        """收集用户上下文信息"""
+        try:
+            user_info = {
+                'recent_activity': {},
+                'permissions': {},
+                'roles': []
+            }
+            
+            # 如果是服务器成员，获取角色和权限信息
+            if guild:
+                member = guild.get_member(user.id)
+                if member:
+                    user_info['roles'] = [
+                        {
+                            'id': role.id,
+                            'name': role.name,
+                            'color': role.color.value,
+                            'permissions': role.permissions.value,
+                            'position': role.position
+                        } for role in member.roles[1:]  # 跳过@everyone角色
+                    ]
+                    
+                    # 获取用户在服务器中的权限
+                    perms = member.guild_permissions
+                    user_info['permissions'] = {
+                        'administrator': perms.administrator,
+                        'manage_guild': perms.manage_guild,
+                        'manage_channels': perms.manage_channels,
+                        'manage_messages': perms.manage_messages,
+                        'kick_members': perms.kick_members,
+                        'ban_members': perms.ban_members
+                    }
+                    
+                    user_info['joined_server_at'] = member.joined_at.isoformat() if member.joined_at else None
+                    user_info['premium_since'] = member.premium_since.isoformat() if member.premium_since else None
+            
+            return user_info
+            
+        except Exception as e:
+            self.logger.error(f"收集用户上下文信息时出错: {e}")
+            return {'error': str(e)}
         
     async def on_error(self, event, *args, **kwargs):
         """错误处理"""
