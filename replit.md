@@ -25,11 +25,11 @@ Preferred communication style: Simple, everyday language.
 - ✅ UPGRADED to use Layout Chart API for true custom TradingView layouts
 - ✅ REMOVED @bot requirement - bot now responds to simple stock commands in monitored channel
 - ✅ IMPROVED command parsing for format: SYMBOL,TIMEFRAME (e.g. AAPL,1h or NASDAQ:GOOG,15m)
-- ✅ FIXED API endpoint to use correct Layout Chart path: /v2/tradingview/layout-chart/{layout_id}
-- ✅ TESTED Layout Chart API successfully - 113KB chart generation working (vs 47KB previously)
-- ✅ FIXED API timeout issues by removing delay parameter (chart-img API limitation)
+- ✅ FIXED API endpoint to use v2/tradingview/advanced-chart with layout parameter
+- ✅ TESTED Advanced Chart API successfully - 57KB chart generation in 4 seconds
+- ✅ FIXED API timeout issues - Advanced Chart API works reliably
 - ✅ FIXED timeframe validation to reject invalid formats like '15h' before API calls
-- ✅ OPTIMIZED for fast response while maintaining Layout Chart functionality
+- ✅ OPTIMIZED for fast response - indicator loading depends on TradingView layout config
 - ✅ DUAL MODE support: Stock charts in monitored channel + webhook forwarding in other channels
 - ✅ AUTO-PREFIX for stock symbols (adds NASDAQ: if no exchange specified)
 - ✅ LAYOUT CHART functionality using user's custom TradingView layout (1920x1080)

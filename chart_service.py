@@ -17,7 +17,7 @@ class ChartService:
         """初始化图表服务"""
         self.config = config
         self.logger = logging.getLogger(__name__)
-        self.api_url = f"https://api.chart-img.com/v2/tradingview/layout-chart/{self.config.layout_id}"
+        self.api_url = "https://api.chart-img.com/v2/tradingview/advanced-chart"
         
     def parse_command(self, content: str) -> Optional[Tuple[str, str]]:
         """
@@ -95,14 +95,15 @@ class ChartService:
                 # 默认添加NASDAQ前缀给美股
                 symbol = f"NASDAQ:{symbol}"
             
-            # 构建Layout Chart API请求
+            # 构建Advanced Chart API请求（支持自定义布局）
             payload = {
                 "symbol": symbol,
                 "interval": normalized_timeframe,
                 "width": 1920,
                 "height": 1080,
-                "format": "png"
-                # 移除delay参数，避免API超时问题
+                "format": "png",
+                "layout": self.config.layout_id,  # 使用自定义TradingView布局
+                "theme": "dark"  # 深色主题
             }
             
             headers = {
