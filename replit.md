@@ -27,6 +27,7 @@ Preferred communication style: Simple, everyday language.
 - ✅ IMPROVED command parsing for format: SYMBOL,TIMEFRAME (e.g. AAPL,1h or NASDAQ:GOOG,15m)
 - ✅ FIXED API endpoint to use correct Layout Chart path: /v2/tradingview/layout-chart/{layout_id}
 - ✅ TESTED Layout Chart API successfully - 113KB chart generation working (vs 47KB previously)
+- ✅ ADDED 8-second delay parameter to ensure technical indicators fully load before chart capture
 - ✅ DUAL MODE support: Stock charts in monitored channel + webhook forwarding in other channels
 - ✅ AUTO-PREFIX for stock symbols (adds NASDAQ: if no exchange specified)
 - ✅ LAYOUT CHART functionality using user's custom TradingView layout (1920x1080)

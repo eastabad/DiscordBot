@@ -91,7 +91,8 @@ class ChartService:
                 "interval": normalized_timeframe,
                 "width": 1920,
                 "height": 1080,
-                "format": "png"
+                "format": "png",
+                "delay": 8000  # 等待8秒让技术指标完全加载
             }
             
             headers = {
