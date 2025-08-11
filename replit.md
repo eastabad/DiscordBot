@@ -14,6 +14,13 @@ Preferred communication style: Simple, everyday language.
 - Solution: User enabled MESSAGE CONTENT INTENT + Fixed role mention detection logic + Fixed command handling
 - Status: ✅ RESOLVED - Bot now properly receives messages, handles commands, and processes @mentions including role mentions
 
+**n8n Workflow Integration** (2025-08-11):
+- Added HTTP API server on port 5000 for n8n workflow integration
+- Created `/api/send-chart` endpoint for automated chart image delivery
+- Supports direct message sending with chart images to specified Discord users
+- API tested and working: Health check ✅, DM sending ✅, Chart delivery ✅
+- Status: ✅ READY FOR PRODUCTION - n8n workflows can now send chart images via API
+
 # System Architecture
 
 ## Core Components
