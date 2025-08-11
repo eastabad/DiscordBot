@@ -17,7 +17,7 @@ class ChartService:
         """初始化图表服务"""
         self.config = config
         self.logger = logging.getLogger(__name__)
-        self.api_url = f"https://api.chart-img.com/v2/tradingview/layout-chart/storage/{self.config.layout_id}"
+        self.api_url = f"https://api.chart-img.com/v2/tradingview/layout-chart/{self.config.layout_id}"
         
     def parse_command(self, content: str) -> Optional[Tuple[str, str]]:
         """
@@ -95,25 +95,21 @@ class ChartService:
                 # 默认添加NASDAQ前缀给美股
                 symbol = f"NASDAQ:{symbol}"
             
-            # 构建Layout Chart Storage API请求（等待指标加载）
+            # 构建Shared Layout API请求（参数有限）
             payload = {
                 "symbol": symbol,
-                "interval": normalized_timeframe,
-                "width": 1920,
-                "height": 1080,
-                "format": "png",
-                "delay": 5000  # 5秒延迟等待技术指标完全加载
+                "interval": normalized_timeframe
             }
             
             headers = {
-                "X-API-Key": self.config.chart_img_api_key,
-                "Content-Type": "application/json"
+                "x-api-key": self.config.chart_img_api_key,
+                "content-type": "application/json"
             }
             
-            # 如果有TradingView会话信息，添加到headers
+            # 如果有TradingView会话信息，添加到headers（用于私有布局访问）
             if self.config.tradingview_session_id and self.config.tradingview_session_id_sign:
-                headers["X-TradingView-SessionId"] = self.config.tradingview_session_id
-                headers["X-TradingView-SessionId-Sign"] = self.config.tradingview_session_id_sign
+                headers["tradingview-session-id"] = self.config.tradingview_session_id
+                headers["tradingview-session-id-sign"] = self.config.tradingview_session_id_sign
             
             self.logger.info(f'请求图表: {symbol} {timeframe} -> {normalized_timeframe}')
             
@@ -128,24 +124,7 @@ class ChartService:
                     if response.status == 200:
                         content_type = response.headers.get('content-type', '').lower()
                         
-                        if 'json' in content_type:
-                            # Storage API返回JSON格式包含图片URL
-                            response_data = await response.json()
-                            if 'url' in response_data:
-                                # 下载图片URL中的内容
-                                async with session.get(response_data['url']) as img_response:
-                                    if img_response.status == 200:
-                                        image_data = await img_response.read()
-                                        self.logger.info(f'成功获取图表: {symbol} {timeframe}, 大小: {len(image_data)} bytes, URL: {response_data["url"]}')
-                                        return image_data
-                            elif 'image' in response_data:
-                                # 如果是base64编码的图片
-                                if response_data['image'].startswith('data:image'):
-                                    base64_data = response_data['image'].split(',')[1]
-                                    image_data = base64.b64decode(base64_data)
-                                    self.logger.info(f'成功获取图表(base64): {symbol} {timeframe}')
-                                    return image_data
-                        elif 'image' in content_type:
+                        if 'image' in content_type:
                             # 直接返回图片数据
                             image_data = await response.read()
                             self.logger.info(f'成功获取图表: {symbol} {timeframe}, 大小: {len(image_data)} bytes')
