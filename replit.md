@@ -116,6 +116,7 @@ Preferred communication style: Simple, everyday language.
 - ✅ ENHANCED !quota command to show exemption status with gold embed
 - ✅ SUPPORTS reason tracking and admin audit trail
 - ✅ TESTED exemption system - bypasses 3/day limit completely
+- ✅ FIXED Discord API compatibility issues (default_message_notifications attribute)
 - Commands: "!exempt_add USER_ID reason", "!exempt_remove USER_ID", "!exempt_list"
 - Status: ✅ PRODUCTION READY - Admin exemption system fully functional
 

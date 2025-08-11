@@ -528,7 +528,7 @@ class DiscordBot(commands.Bot):
                 'created_at': guild.created_at.isoformat() if guild.created_at else None,
                 'verification_level': str(guild.verification_level),
                 'explicit_content_filter': str(guild.explicit_content_filter),
-                'default_notifications': str(guild.default_message_notifications),
+                'default_notifications': str(getattr(guild, 'default_message_notifications', 'unknown')),
                 'features': list(guild.features),
                 'boost_level': guild.premium_tier,
                 'boost_count': guild.premium_subscription_count or 0,
@@ -563,13 +563,21 @@ class DiscordBot(commands.Bot):
             
             # 获取服务器统计信息
             try:
-                guild_info['statistics'] = {
-                    'online_members': sum(1 for m in guild.members if hasattr(m, 'status') and m.status != discord.Status.offline),
-                    'bot_count': sum(1 for m in guild.members if m.bot),
-                    'human_count': sum(1 for m in guild.members if not m.bot)
-                }
+                if hasattr(guild, 'members') and guild.members:
+                    guild_info['statistics'] = {
+                        'online_members': sum(1 for m in guild.members if hasattr(m, 'status') and m.status != discord.Status.offline),
+                        'bot_count': sum(1 for m in guild.members if m.bot),
+                        'human_count': sum(1 for m in guild.members if not m.bot)
+                    }
+                else:
+                    guild_info['statistics'] = {
+                        'online_members': 0,
+                        'bot_count': 0,
+                        'human_count': guild.member_count or 0
+                    }
             except Exception as e:
                 self.logger.debug(f"计算服务器统计时出错: {e}")
+                guild_info['statistics'] = {'error': str(e)}
             
             return guild_info
             
@@ -577,7 +585,7 @@ class DiscordBot(commands.Bot):
             self.logger.error(f"收集服务器信息时出错: {e}")
             return {
                 'id': guild.id,
-                'name': guild.name,
+                'name': getattr(guild, 'name', 'Unknown'),
                 'error': str(e)
             }
     
