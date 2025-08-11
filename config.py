@@ -38,10 +38,22 @@ class Config:
         if monitor_channels_str:
             # 支持逗号分隔的多个频道ID
             self.monitor_channel_ids = [id.strip() for id in monitor_channels_str.split(',') if id.strip()]
+            self.logger.info(f"配置多频道监控: {self.monitor_channel_ids}")
         else:
-            # 向后兼容单个频道配置
+            # 向后兼容单个频道配置，但也支持逗号分隔
             single_channel = os.getenv('MONITOR_CHANNEL_ID')
-            self.monitor_channel_ids = [single_channel] if single_channel else []
+            if single_channel:
+                if ',' in single_channel:
+                    # 单个变量包含多个频道ID
+                    self.monitor_channel_ids = [id.strip() for id in single_channel.split(',') if id.strip()]
+                    self.logger.info(f"配置多频道监控(从MONITOR_CHANNEL_ID): {self.monitor_channel_ids}")
+                else:
+                    # 真正的单个频道
+                    self.monitor_channel_ids = [single_channel]
+                    self.logger.info(f"配置单频道监控: {self.monitor_channel_ids}")
+            else:
+                self.monitor_channel_ids = []
+                self.logger.warning("未配置监控频道")
         
         # 可选配置
         self.log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
