@@ -229,11 +229,17 @@ class ChannelCleaner:
                 total_deleted = 0
                 
                 for cid in monitor_channels:
-                    channel = self.bot.get_channel(int(cid))
-                    if channel:
-                        deleted_count = await self._cleanup_channel_days(channel, days)
-                        total_deleted += deleted_count
-                        await asyncio.sleep(1)
+                    try:
+                        channel = self.bot.get_channel(int(cid.strip()))
+                        if channel:
+                            deleted_count = await self._cleanup_channel_days(channel, days)
+                            total_deleted += deleted_count
+                            await asyncio.sleep(1)
+                        else:
+                            self.logger.warning(f"找不到频道: {cid}")
+                    except ValueError as e:
+                        self.logger.error(f"无效的频道ID: {cid}, 错误: {e}")
+                        continue
                 
                 self.logger.info(f"手动清理所有监控频道完成，共删除了 {total_deleted} 条消息")
                 return total_deleted
