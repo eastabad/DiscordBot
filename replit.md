@@ -120,6 +120,17 @@ Preferred communication style: Simple, everyday language.
 - Commands: "!exempt_add USER_ID reason", "!exempt_remove USER_ID", "!exempt_list"
 - Status: ✅ PRODUCTION READY - Admin exemption system fully functional
 
+**Unified Private Message System** (2025-08-11):
+- ✅ REDESIGNED all features to use private message delivery with channel notifications
+- ✅ APPLIED unified daily request limits to ALL functions (stock charts, predictions, image analysis)
+- ✅ IMPLEMENTED consistent quota checking across all features
+- ✅ ENHANCED VIP exemption system to show "VIP无限制" status for exempt users
+- ✅ REDUCED channel spam by moving detailed responses to private messages
+- ✅ IMPROVED user experience with clear "已发送到您的私信中" notifications
+- ✅ MAINTAINED exemption user support (easton, easmartalgo, TestAdmin)
+- Features: Stock charts, trend predictions, chart analysis all use DM delivery
+- Status: ✅ PRODUCTION READY - Unified private messaging system active
+
 # System Architecture
 
 ## Core Components

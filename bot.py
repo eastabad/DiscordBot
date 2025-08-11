@@ -133,6 +133,7 @@ class DiscordBot(commands.Bot):
             username = message.author.display_name or message.author.name
             
             can_request, current_count, remaining = self.rate_limiter.check_user_limit(user_id, username)
+            is_exempt = remaining == 999  # 豁免用户的标识
             
             if not can_request:
                 # 用户已超过每日限制
@@ -157,12 +158,15 @@ class DiscordBot(commands.Bot):
             
             symbol, timeframe = command_result
             
-            # 记录请求（在实际处理前记录）
-            success = self.rate_limiter.record_request(user_id, username)
-            remaining_after = remaining - 1
-            
-            if success:
-                self.logger.info(f"用户 {username} 请求图表，今日剩余: {remaining_after}/3")
+            # 记录请求（在实际处理前记录，豁免用户跳过）
+            if not is_exempt:
+                success = self.rate_limiter.record_request(user_id, username)
+                remaining_after = remaining - 1
+                if success:
+                    self.logger.info(f"用户 {username} 请求图表，今日剩余: {remaining_after}/3")
+            else:
+                remaining_after = 999  # 豁免用户保持无限制
+                self.logger.info(f"豁免用户 {username} 请求图表，无限制")
             
             # 添加处理中的反应
             await message.add_reaction("⏳")
@@ -184,7 +188,10 @@ class DiscordBot(commands.Bot):
                     
                     # 在频道中提示成功（包含剩余次数信息）
                     success_msg = self.chart_service.format_success_message(symbol, timeframe)
-                    limit_info = f"（今日剩余 {remaining_after}/3 次）"
+                    if is_exempt:
+                        limit_info = f"（VIP无限制）"
+                    else:
+                        limit_info = f"（今日剩余 {remaining_after}/3 次）"
                     await message.channel.send(f"{message.author.mention} {success_msg} {limit_info}")
                     
                     # 更新反应为成功
@@ -241,6 +248,21 @@ class DiscordBot(commands.Bot):
     async def handle_prediction_request(self, message):
         """处理股票预测请求"""
         try:
+            # 检查用户请求限制
+            user_id = str(message.author.id)
+            username = message.author.display_name or message.author.name
+            
+            can_request, current_count, remaining = self.rate_limiter.check_user_limit(user_id, username)
+            is_exempt = remaining == 999  # 豁免用户的标识
+            
+            if not can_request:
+                # 用户已超过每日限制
+                limit_msg = f"⚠️ {username}, 您今日的预测请求已达到限制 (3次/天)。请明天再试。"
+                await message.reply(limit_msg)
+                await message.add_reaction("❌")
+                self.logger.warning(f"用户 {username} ({user_id}) 超过每日请求限制: {current_count}/3")
+                return
+                
             # 从消息中提取股票符号
             symbol_match = re.search(r'([A-Z][A-Z:]*[A-Z]+)', message.content, re.IGNORECASE)
             if not symbol_match:
@@ -255,6 +277,16 @@ class DiscordBot(commands.Bot):
             if ':' not in symbol:
                 symbol = f"NASDAQ:{symbol}"
             
+            # 记录请求（在实际处理前记录，豁免用户跳过）
+            if not is_exempt:
+                success = self.rate_limiter.record_request(user_id, username)
+                remaining_after = remaining - 1
+                if success:
+                    self.logger.info(f"用户 {username} 请求预测，今日剩余: {remaining_after}/3")
+            else:
+                remaining_after = 999  # 豁免用户保持无限制
+                self.logger.info(f"豁免用户 {username} 请求预测，无限制")
+            
             # 添加处理中的反应
             await message.add_reaction("🔄")
             
@@ -266,14 +298,29 @@ class DiscordBot(commands.Bot):
             # 格式化预测消息
             prediction_message = self.prediction_service.format_prediction_message(prediction)
             
-            # 发送预测结果
-            await message.channel.send(f"{message.author.mention}\n{prediction_message}")
-            
-            # 移除处理中反应，添加成功反应
-            await message.remove_reaction("🔄", self.user)
-            await message.add_reaction("📈")
-            
-            self.logger.info(f'成功发送预测: {symbol}')
+            # 发送私信
+            try:
+                await message.author.send(f"📈 **{symbol} 股票趋势预测分析**\n\n{prediction_message}")
+                
+                # 在频道中提示成功（包含剩余次数信息）
+                if is_exempt:
+                    limit_info = f"（VIP无限制）"
+                else:
+                    limit_info = f"（今日剩余 {remaining_after}/3 次）"
+                await message.channel.send(f"{message.author.mention} 📈 {symbol} 趋势预测已发送到您的私信中 {limit_info}")
+                
+                # 移除处理中反应，添加成功反应
+                await message.remove_reaction("🔄", self.user)
+                await message.add_reaction("📈")
+                
+                self.logger.info(f'成功发送预测: {symbol}')
+                
+            except discord.Forbidden:
+                await message.channel.send(
+                    f"{message.author.mention} 无法发送私信，请检查您的隐私设置"
+                )
+                await message.remove_reaction("🔄", self.user)
+                await message.add_reaction("❌")
             
         except Exception as e:
             self.logger.error(f"处理预测请求失败: {e}")
@@ -300,6 +347,21 @@ class DiscordBot(commands.Bot):
     async def handle_chart_analysis_request(self, message):
         """处理图表分析请求"""
         try:
+            # 检查用户请求限制
+            user_id = str(message.author.id)
+            username = message.author.display_name or message.author.name
+            
+            can_request, current_count, remaining = self.rate_limiter.check_user_limit(user_id, username)
+            is_exempt = remaining == 999  # 豁免用户的标识
+            
+            if not can_request:
+                # 用户已超过每日限制
+                limit_msg = f"⚠️ {username}, 您今日的分析请求已达到限制 (3次/天)。请明天再试。"
+                await message.reply(limit_msg)
+                await message.add_reaction("❌")
+                self.logger.warning(f"用户 {username} ({user_id}) 超过每日请求限制: {current_count}/3")
+                return
+                
             # 找到第一个图片附件
             chart_image = None
             for attachment in message.attachments:
@@ -321,6 +383,16 @@ class DiscordBot(commands.Bot):
                 if ':' not in symbol:
                     symbol = f"NASDAQ:{symbol}"
             
+            # 记录请求（在实际处理前记录，豁免用户跳过）
+            if not is_exempt:
+                success = self.rate_limiter.record_request(user_id, username)
+                remaining_after = remaining - 1
+                if success:
+                    self.logger.info(f"用户 {username} 请求图表分析，今日剩余: {remaining_after}/3")
+            else:
+                remaining_after = 999  # 豁免用户保持无限制
+                self.logger.info(f"豁免用户 {username} 请求图表分析，无限制")
+            
             # 添加处理中的反应
             await message.add_reaction("🔍")
             
@@ -332,14 +404,29 @@ class DiscordBot(commands.Bot):
             # 格式化分析消息
             analysis_message = self.chart_analysis_service.format_analysis_message(analysis)
             
-            # 发送分析结果
-            await message.channel.send(f"{message.author.mention}\n{analysis_message}")
-            
-            # 移除处理中反应，添加成功反应
-            await message.remove_reaction("🔍", self.user)
-            await message.add_reaction("📊")
-            
-            self.logger.info(f'成功发送图表分析: {symbol}')
+            # 发送私信
+            try:
+                await message.author.send(f"📊 **TradingView图表分析报告**\n\n{analysis_message}")
+                
+                # 在频道中提示成功（包含剩余次数信息）
+                if is_exempt:
+                    limit_info = f"（VIP无限制）"
+                else:
+                    limit_info = f"（今日剩余 {remaining_after}/3 次）"
+                await message.channel.send(f"{message.author.mention} 📊 图表分析报告已发送到您的私信中 {limit_info}")
+                
+                # 移除处理中反应，添加成功反应
+                await message.remove_reaction("🔍", self.user)
+                await message.add_reaction("📊")
+                
+                self.logger.info(f'成功发送图表分析: {symbol}')
+                
+            except discord.Forbidden:
+                await message.channel.send(
+                    f"{message.author.mention} 无法发送私信，请检查您的隐私设置"
+                )
+                await message.remove_reaction("🔍", self.user)
+                await message.add_reaction("❌")
             
         except Exception as e:
             self.logger.error(f"处理图表分析请求失败: {e}")
