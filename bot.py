@@ -91,8 +91,8 @@ class DiscordBot(commands.Bot):
             str(message.channel.id) in self.config.monitor_channel_ids
         )
         
-        if is_mentioned and is_monitored_channel:
-            self.logger.info(f'在监控频道中检测到提及，开始处理股票图表请求...')
+        if is_mentioned and is_monitored_channel and self.has_stock_command(message.content):
+            self.logger.info(f'在监控频道中检测到提及和股票命令，开始处理股票图表请求...')
             await self.handle_chart_request(message)
         elif is_mentioned:
             # 检查是否有图片附件需要分析
@@ -103,6 +103,10 @@ class DiscordBot(commands.Bot):
             elif self.has_prediction_command(message.content):
                 self.logger.info(f'检测到预测请求，开始处理股票预测...')
                 await self.handle_prediction_request(message)
+            # 检查是否是股票命令（在非监控频道中也支持@提及方式）
+            elif self.has_stock_command(message.content):
+                self.logger.info(f'检测到@提及的股票命令，开始处理股票图表请求...')
+                await self.handle_chart_request(message)
             else:
                 self.logger.info(f'检测到@提及，开始处理webhook转发...')
                 await self.handle_mention(message)
