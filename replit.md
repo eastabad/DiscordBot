@@ -26,8 +26,8 @@ Preferred communication style: Simple, everyday language.
 - ✅ REMOVED @bot requirement - bot now responds to simple stock commands in monitored channel
 - ✅ IMPROVED command parsing for format: SYMBOL,TIMEFRAME (e.g. AAPL,1h or NASDAQ:GOOG,15m)
 - ✅ FIXED API endpoint to use v2/tradingview/layout-chart/{layout_id} (Shared Layout)
-- ✅ IMPLEMENTED Shared Layout API with limited parameters (symbol + interval)
-- ✅ TESTED Shared Layout API with TradingView session credentials
+- ✅ IMPLEMENTED Shared Layout API with limited parameters (symbol + interval + width + height)
+- ✅ TESTED Shared Layout API successfully - 258KB charts at 1920x1080 resolution
 - ✅ CONFIRMED technical indicators render correctly (MACD, RSI, etc.)
 - ✅ INCREASED timeout to 180 seconds for Layout Chart Storage API requirements
 - ✅ SUPPORTS community scripts and private indicators per TradingView subscription

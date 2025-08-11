@@ -98,7 +98,9 @@ class ChartService:
             # 构建Shared Layout API请求（参数有限）
             payload = {
                 "symbol": symbol,
-                "interval": normalized_timeframe
+                "interval": normalized_timeframe,
+                "width": 1920,
+                "height": 1080
             }
             
             headers = {

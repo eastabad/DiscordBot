@@ -46,7 +46,7 @@ TSLA,4h
 
 ### 技术指标加载优化：
 - 使用Shared Layout API访问您的自定义TradingView布局
-- 支持有限参数：symbol和interval覆盖
+- 支持有限参数：symbol、interval、width(1920)、height(1080)覆盖
 - 180秒超时设置，适配复杂指标处理
 - 直接返回PNG图片数据
 - TradingView会话凭证支持私有布局访问
