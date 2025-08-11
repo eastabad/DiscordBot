@@ -142,6 +142,16 @@ Preferred communication style: Simple, everyday language.
 - Admin users: easton, easmartalgo, TestAdmin (hardcoded permission list)
 - Status: ✅ PRODUCTION READY - Self-service VIP management active
 
+**股票交易所映射修复** (2025-08-11):
+- ✅ IMPLEMENTED comprehensive stock exchange mapping for 70+ popular stocks
+- ✅ FIXED NYSE stock symbol issues (PFE, JPM, JNJ, BAC, WMT, etc.)
+- ✅ ADDED automatic exchange prefix detection and assignment
+- ✅ SUPPORTS both NYSE and NASDAQ stocks with correct routing
+- ✅ ENHANCED chart generation accuracy for all major US stocks
+- ✅ MAINTAINED fallback to NASDAQ for unknown symbols
+- Covered exchanges: NYSE (40+ stocks), NASDAQ (30+ stocks), Chinese ADRs
+- Status: ✅ PRODUCTION READY - Accurate exchange routing for major stocks
+
 # System Architecture
 
 ## Core Components

@@ -19,6 +19,92 @@ class ChartService:
         self.logger = logging.getLogger(__name__)
         self.api_url = f"https://api.chart-img.com/v2/tradingview/layout-chart/{self.config.layout_id}"
         
+        # 常见股票交易所映射
+        self.stock_exchange_map = {
+            # NYSE 股票
+            'PFE': 'NYSE:PFE',  # 辉瑞
+            'JPM': 'NYSE:JPM',  # 摩根大通
+            'JNJ': 'NYSE:JNJ',  # 强生
+            'BAC': 'NYSE:BAC',  # 美国银行
+            'WMT': 'NYSE:WMT',  # 沃尔玛
+            'XOM': 'NYSE:XOM',  # 埃克森美孚
+            'CVX': 'NYSE:CVX',  # 雪佛龙
+            'KO': 'NYSE:KO',   # 可口可乐
+            'MCD': 'NYSE:MCD', # 麦当劳
+            'DIS': 'NYSE:DIS', # 迪士尼
+            'HD': 'NYSE:HD',   # 家得宝
+            'VZ': 'NYSE:VZ',   # 威瑞森
+            'PG': 'NYSE:PG',   # 宝洁
+            'IBM': 'NYSE:IBM', # IBM
+            'GE': 'NYSE:GE',   # 通用电气
+            'T': 'NYSE:T',     # AT&T
+            'F': 'NYSE:F',     # 福特
+            'GM': 'NYSE:GM',   # 通用汽车
+            'C': 'NYSE:C',     # 花旗
+            'WFC': 'NYSE:WFC', # 富国银行
+            'GS': 'NYSE:GS',   # 高盛
+            'MS': 'NYSE:MS',   # 摩根士丹利
+            'UNH': 'NYSE:UNH', # 联合健康
+            'V': 'NYSE:V',     # Visa
+            'MA': 'NYSE:MA',   # 万事达
+            'LLY': 'NYSE:LLY', # 礼来
+            'ABT': 'NYSE:ABT', # 雅培
+            'NKE': 'NYSE:NKE', # 耐克
+            'COP': 'NYSE:COP', # 康菲石油
+            'ACN': 'NYSE:ACN', # 埃森哲
+            'UPS': 'NYSE:UPS', # 联合包裹
+            'LOW': 'NYSE:LOW', # 劳氏
+            'BMY': 'NYSE:BMY', # 百时美施贵宝
+            'MDT': 'NYSE:MDT', # 美敦力
+            'BA': 'NYSE:BA',   # 波音
+            'CAT': 'NYSE:CAT', # 卡特彼勒
+            'DE': 'NYSE:DE',   # 迪尔
+            'MMM': 'NYSE:MMM', # 3M
+            'SPGI': 'NYSE:SPGI', # 标普全球
+            'BLK': 'NYSE:BLK', # 贝莱德
+            'AXP': 'NYSE:AXP', # 美国运通
+            'TRV': 'NYSE:TRV', # 旅行者
+            'NOW': 'NYSE:NOW', # ServiceNow
+            'BABA': 'NYSE:BABA', # 阿里巴巴
+            'NIO': 'NYSE:NIO',   # 蔚来
+            'XPEV': 'NYSE:XPEV', # 小鹏
+            'TME': 'NYSE:TME',   # 腾讯音乐
+            'DIDI': 'NYSE:DIDI', # 滴滴
+            'UBER': 'NYSE:UBER', # Uber
+            
+            # NASDAQ 股票
+            'AAPL': 'NASDAQ:AAPL', # 苹果
+            'MSFT': 'NASDAQ:MSFT', # 微软
+            'GOOGL': 'NASDAQ:GOOGL', # 谷歌A
+            'GOOG': 'NASDAQ:GOOG', # 谷歌C
+            'AMZN': 'NASDAQ:AMZN', # 亚马逊
+            'TSLA': 'NASDAQ:TSLA', # 特斯拉
+            'META': 'NASDAQ:META', # Meta
+            'NVDA': 'NASDAQ:NVDA', # 英伟达
+            'AMD': 'NASDAQ:AMD',   # AMD
+            'INTC': 'NASDAQ:INTC', # 英特尔
+            'COST': 'NASDAQ:COST', # 好市多
+            'ADBE': 'NASDAQ:ADBE', # Adobe
+            'NFLX': 'NASDAQ:NFLX', # Netflix
+            'PYPL': 'NASDAQ:PYPL', # PayPal
+            'CMCSA': 'NASDAQ:CMCSA', # 康卡斯特
+            'PEP': 'NASDAQ:PEP', # 百事可乐
+            'TXN': 'NASDAQ:TXN', # 德州仪器
+            'QCOM': 'NASDAQ:QCOM', # 高通
+            'HON': 'NASDAQ:HON', # 霍尼韦尔
+            'SBUX': 'NASDAQ:SBUX', # 星巴克
+            'AMGN': 'NASDAQ:AMGN', # 安进
+            'GILD': 'NASDAQ:GILD', # 吉利德
+            'JD': 'NASDAQ:JD',     # 京东
+            'PDD': 'NASDAQ:PDD',   # 拼多多
+            'NTES': 'NASDAQ:NTES', # 网易
+            'BIDU': 'NASDAQ:BIDU', # 百度
+            'LI': 'NASDAQ:LI',     # 理想
+            'BILI': 'NASDAQ:BILI', # 哔哩哔哩
+            'IQ': 'NASDAQ:IQ',     # 爱奇艺
+            'LYFT': 'NASDAQ:LYFT', # Lyft
+        }
+        
     def parse_command(self, content: str) -> Optional[Tuple[str, str]]:
         """
         解析用户输入的命令
@@ -91,8 +177,14 @@ class ChartService:
             
             # 确保symbol包含交易所前缀
             if ':' not in symbol:
-                # 默认添加NASDAQ前缀给美股
-                symbol = f"NASDAQ:{symbol}"
+                # 检查股票交易所映射
+                if symbol in self.stock_exchange_map:
+                    symbol = self.stock_exchange_map[symbol]
+                    self.logger.info(f'使用交易所映射: {symbol}')
+                else:
+                    # 默认添加NASDAQ前缀给未知美股
+                    symbol = f"NASDAQ:{symbol}"
+                    self.logger.info(f'使用默认NASDAQ前缀: {symbol}')
             
             # 构建Shared Layout API请求（参数有限）
             payload = {

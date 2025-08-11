@@ -277,9 +277,9 @@ class DiscordBot(commands.Bot):
             
             symbol = symbol_match.group(1).upper()
             
-            # 确保symbol包含交易所前缀
-            if ':' not in symbol:
-                symbol = f"NASDAQ:{symbol}"
+            # 使用chart_service的交易所映射逻辑
+            # 这将在chart_service.get_chart()中自动处理
+            pass
             
             # 记录请求（在实际处理前记录，豁免用户跳过）
             if not is_exempt:
