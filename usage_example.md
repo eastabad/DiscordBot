@@ -10,13 +10,14 @@
 
 ## 使用方法
 
-### 在监控频道中@机器人并输入股票命令：
+### 在监控频道中输入股票命令（可以@机器人或直接输入）：
 
 ```
-@TDbot-tradingview AAPL,1h
-@TDbot-tradingview NASDAQ:GOOG,15m  
-@TDbot-tradingview SPY,1d
-@TDbot-tradingview TSLA,4h
+AAPL,1h
+NASDAQ:GOOG,15m  
+SPY,1d
+TSLA,4h
+@TDbot-tradingview MSFT,1h
 ```
 
 ### 支持的时间框架：
@@ -47,7 +48,7 @@
 
 **用户输入：**
 ```
-@TDbot-tradingview AAPL,1h
+AAPL,1h
 ```
 
 **机器人私信：**
@@ -66,8 +67,8 @@
 ### 常见错误和解决方法：
 
 1. **格式错误**
-   - 错误: `@bot 无效命令`
-   - 回复: `请使用正确格式：@bot AAPL,1h 或 @bot NASDAQ:GOOG,15m`
+   - 错误: `无效命令`
+   - 回复: `请使用正确格式：AAPL,1h 或 NASDAQ:GOOG,15m`
 
 2. **私信被阻止**
    - 错误: Discord隐私设置阻止私信

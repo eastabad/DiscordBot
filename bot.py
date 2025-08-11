@@ -10,6 +10,7 @@ from datetime import datetime
 from webhook_handler import WebhookHandler
 from chart_service import ChartService
 import io
+import re
 
 class DiscordBot(commands.Bot):
     """Discord机器人类"""
@@ -85,13 +86,16 @@ class DiscordBot(commands.Bot):
         )
         
         if is_mentioned and is_monitored_channel:
-            self.logger.info(f'在监控频道中检测到@提及，开始处理股票图表请求...')
+            self.logger.info(f'在监控频道中检测到提及，开始处理股票图表请求...')
             await self.handle_chart_request(message)
         elif is_mentioned:
             self.logger.info(f'检测到@提及，开始处理webhook转发...')
             await self.handle_mention(message)
+        elif is_monitored_channel and self.has_stock_command(message.content):
+            self.logger.info(f'在监控频道中检测到股票命令，开始处理图表请求...')
+            await self.handle_chart_request(message)
         else:
-            self.logger.debug(f'消息不包含@提及: {message.content[:30]}')
+            self.logger.debug(f'消息不包含提及或股票命令: {message.content[:30]}')
             
         # 处理命令
         await self.process_commands(message)
@@ -103,7 +107,7 @@ class DiscordBot(commands.Bot):
             command_result = self.chart_service.parse_command(message.content)
             if not command_result:
                 await message.channel.send(
-                    f"{message.author.mention} 请使用正确格式：`@bot AAPL,1h` 或 `@bot NASDAQ:GOOG,15m`"
+                    f"{message.author.mention} 请使用正确格式：`AAPL,1h` 或 `NASDAQ:GOOG,15m`"
                 )
                 return
             
@@ -162,6 +166,11 @@ class DiscordBot(commands.Bot):
                 await message.add_reaction("❌")
             except:
                 pass
+    
+    def has_stock_command(self, content: str) -> bool:
+        """检查消息是否包含股票命令格式"""
+        # 简单检查是否包含股票符号和时间框架格式
+        return bool(re.search(r'[A-Z:]+[,\s]+\d+[smhdwMy]', content, re.IGNORECASE))
         
     async def handle_mention(self, message):
         """处理@提及的消息"""

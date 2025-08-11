@@ -1,25 +1,43 @@
 #!/bin/bash
-# 测试外部API访问脚本
 
-echo "=== 测试Discord Bot API ==="
-echo "URL: https://workspace.eastabad.replit.dev"
-echo ""
+# 测试Shared Layout API调用
+echo "测试chart-img Shared Layout API..."
 
-echo "1. 测试健康检查："
-curl -s https://workspace.eastabad.replit.dev/api/health | python3 -m json.tool
+API_KEY="$CHART_IMG_API_KEY"
+LAYOUT_ID="$LAYOUT_ID" 
 
-echo ""
-echo "2. 测试发送图表消息："
-curl -X POST https://workspace.eastabad.replit.dev/api/send-chart \
+if [ -z "$API_KEY" ] || [ -z "$LAYOUT_ID" ]; then
+    echo "❌ 缺少API密钥或Layout ID"
+    exit 1
+fi
+
+echo "🔑 API Key: ${API_KEY:0:10}..."
+echo "📊 Layout ID: $LAYOUT_ID"
+
+# 测试API调用
+curl -X POST https://api.chart-img.com/v2/tradingview/shared-layout \
   -H "Content-Type: application/json" \
-  -d '[{
-    "authorId": 1145170623354638418,
-    "symbol": "AAPL", 
-    "timeframe": "1h",
-    "discordPayload": {
-      "content": "📊 n8n测试：AAPL 1小时图表"
-    }
-  }]' | python3 -m json.tool
+  -H "X-API-Key: $API_KEY" \
+  -d '{
+    "layout": "'$LAYOUT_ID'",
+    "symbol": "NASDAQ:AAPL",
+    "interval": "1h",
+    "width": 1920,
+    "height": 1080,
+    "format": "png"
+  }' \
+  --output test_chart.png \
+  --silent \
+  --write-out "HTTP Status: %{http_code}\nSize: %{size_download} bytes\n"
 
-echo ""
-echo "=== 测试完成 ==="
+if [ -f "test_chart.png" ] && [ -s "test_chart.png" ]; then
+    echo "✅ 图表生成成功: test_chart.png ($(du -h test_chart.png | cut -f1))"
+    ls -la test_chart.png
+else
+    echo "❌ 图表生成失败"
+    if [ -f "test_chart.png" ]; then
+        echo "文件内容:"
+        cat test_chart.png
+        rm test_chart.png
+    fi
+fi

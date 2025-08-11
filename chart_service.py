@@ -29,9 +29,7 @@ class ChartService:
         cleaned_content = re.sub(r'<@!?\d+>', '', content).strip()
         cleaned_content = re.sub(r'@\w+', '', cleaned_content).strip()
         
-        # 只有包含@提及的消息才处理（避免误匹配）
-        if not re.search(r'<@!?\d+>|@\w+', content):
-            return None
+        # 移除@提及检查，直接解析命令
         
         # 匹配模式: 股票符号,时间框架
         patterns = [
@@ -87,15 +85,14 @@ class ChartService:
                 # 默认添加NASDAQ前缀给美股
                 symbol = f"NASDAQ:{symbol}"
             
-            # 构建API请求
+            # 构建Advanced Chart API请求（包含layout参数）
             payload = {
                 "symbol": symbol,
                 "interval": normalized_timeframe,
                 "width": 1920,
                 "height": 1080,
                 "format": "png",
-                "layout": self.config.layout_id,
-                "timezone": "Etc/UTC"
+                "layout": self.config.layout_id
             }
             
             headers = {
