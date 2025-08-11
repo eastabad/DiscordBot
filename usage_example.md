@@ -45,9 +45,10 @@ TSLA,4h
 - `TRADINGVIEW_SESSION_ID_SIGN` - TradingView会话签名
 
 ### 技术指标加载优化：
-- 图表生成包含8秒延迟等待时间，确保所有技术指标完全加载
 - 使用Layout Chart API读取您的自定义TradingView布局设置
 - 生成1920x1080高分辨率图表
+- 快速响应模式，避免API延迟超时问题
+- 120秒API超时设置，处理复杂图表生成
 
 ### 示例响应：
 

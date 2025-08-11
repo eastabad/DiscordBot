@@ -56,7 +56,7 @@ class ChartService:
         self.logger.warning(f'无法解析命令: {content}')
         return None
     
-    def normalize_timeframe(self, timeframe: str) -> str:
+    def normalize_timeframe(self, timeframe: str) -> Optional[str]:
         """
         标准化时间框架格式
         """
@@ -101,8 +101,8 @@ class ChartService:
                 "interval": normalized_timeframe,
                 "width": 1920,
                 "height": 1080,
-                "format": "png",
-                "delay": 8000  # 等待8秒让技术指标完全加载
+                "format": "png"
+                # 移除delay参数，避免API超时问题
             }
             
             headers = {
@@ -122,7 +122,7 @@ class ChartService:
                     self.api_url,
                     json=payload,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=60)
+                    timeout=aiohttp.ClientTimeout(total=120)  # 120秒超时（包含API处理时间）
                 ) as response:
                     
                     if response.status == 200:
