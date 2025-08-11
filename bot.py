@@ -10,6 +10,7 @@ from datetime import datetime
 from webhook_handler import WebhookHandler
 from chart_service import ChartService
 from rate_limiter import RateLimiter
+from prediction_service import StockPredictionService
 import io
 import re
 
@@ -34,6 +35,7 @@ class DiscordBot(commands.Bot):
         self.webhook_handler = WebhookHandler(config.webhook_url)
         self.chart_service = ChartService(config)
         self.rate_limiter = RateLimiter(daily_limit=3)  # 每日限制3次
+        self.prediction_service = StockPredictionService(config)  # 股票预测服务
         self.logger = logging.getLogger(__name__)
         
     async def on_ready(self):
@@ -91,11 +93,19 @@ class DiscordBot(commands.Bot):
             self.logger.info(f'在监控频道中检测到提及，开始处理股票图表请求...')
             await self.handle_chart_request(message)
         elif is_mentioned:
-            self.logger.info(f'检测到@提及，开始处理webhook转发...')
-            await self.handle_mention(message)
+            # 检查是否是预测请求
+            if self.has_prediction_command(message.content):
+                self.logger.info(f'检测到预测请求，开始处理股票预测...')
+                await self.handle_prediction_request(message)
+            else:
+                self.logger.info(f'检测到@提及，开始处理webhook转发...')
+                await self.handle_mention(message)
         elif is_monitored_channel and self.has_stock_command(message.content):
             self.logger.info(f'在监控频道中检测到股票命令，开始处理图表请求...')
             await self.handle_chart_request(message)
+        elif is_monitored_channel and self.has_prediction_command(message.content):
+            self.logger.info(f'在监控频道中检测到预测请求，开始处理股票预测...')
+            await self.handle_prediction_request(message)
         else:
             self.logger.debug(f'消息不包含提及或股票命令: {message.content[:30]}')
             
@@ -194,6 +204,63 @@ class DiscordBot(commands.Bot):
         """检查消息是否包含股票命令格式"""
         # 简单检查是否包含股票符号和时间框架格式
         return bool(re.search(r'[A-Z:]+[,\s]+\d+[smhdwMy]', content, re.IGNORECASE))
+    
+    def has_prediction_command(self, content: str) -> bool:
+        """检查消息是否包含预测请求"""
+        prediction_keywords = ['预测', 'predict', '趋势', 'trend', '分析', 'analysis', '预测分析', '走势预测']
+        content_lower = content.lower()
+        # 检查是否包含预测关键词和股票符号
+        has_keyword = any(keyword in content_lower for keyword in prediction_keywords)
+        has_symbol = bool(re.search(r'[A-Z]{2,}', content, re.IGNORECASE))
+        return has_keyword and has_symbol
+    
+    async def handle_prediction_request(self, message):
+        """处理股票预测请求"""
+        try:
+            # 从消息中提取股票符号
+            symbol_match = re.search(r'([A-Z][A-Z:]*[A-Z]+)', message.content, re.IGNORECASE)
+            if not symbol_match:
+                await message.channel.send(
+                    f"{message.author.mention} 请提供有效的股票符号，例如：`@bot 预测 AAPL 趋势`"
+                )
+                return
+            
+            symbol = symbol_match.group(1).upper()
+            
+            # 确保symbol包含交易所前缀
+            if ':' not in symbol:
+                symbol = f"NASDAQ:{symbol}"
+            
+            # 添加处理中的反应
+            await message.add_reaction("🔄")
+            
+            self.logger.info(f'开始生成预测: {symbol}')
+            
+            # 生成预测
+            prediction = await self.prediction_service.get_prediction(symbol)
+            
+            # 格式化预测消息
+            prediction_message = self.prediction_service.format_prediction_message(prediction)
+            
+            # 发送预测结果
+            await message.channel.send(f"{message.author.mention}\n{prediction_message}")
+            
+            # 移除处理中反应，添加成功反应
+            await message.remove_reaction("🔄", self.user)
+            await message.add_reaction("📈")
+            
+            self.logger.info(f'成功发送预测: {symbol}')
+            
+        except Exception as e:
+            self.logger.error(f"处理预测请求失败: {e}")
+            await message.channel.send(
+                f"{message.author.mention} 生成预测时发生错误，请稍后重试"
+            )
+            try:
+                await message.remove_reaction("🔄", self.user)
+                await message.add_reaction("❌")
+            except:
+                pass
         
     async def handle_mention(self, message):
         """处理@提及的消息"""
