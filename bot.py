@@ -57,8 +57,19 @@ class DiscordBot(commands.Bot):
             self.logger.debug('忽略机器人自己的消息')
             return
             
-        # 检查是否被@提及
-        if self.user in message.mentions:
+        # 检查是否被@提及（检查机器人角色是否被提及）
+        bot_role_mentioned = False
+        if message.guild:
+            bot_member = message.guild.get_member(self.user.id)
+            if bot_member:
+                bot_role_mentioned = any(role in message.role_mentions for role in bot_member.roles)
+        
+        is_mentioned = (self.user in message.mentions or 
+                       bot_role_mentioned or
+                       f'<@{self.user.id}>' in message.content or
+                       f'<@!{self.user.id}>' in message.content)
+        
+        if is_mentioned:
             self.logger.info(f'检测到@提及，开始处理...')
             await self.handle_mention(message)
         else:
