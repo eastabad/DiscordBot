@@ -200,14 +200,18 @@ class ChannelCleaner:
             # 检查是否为列表格式
             if isinstance(self.config.monitor_channel_ids, list):
                 monitor_channels.extend(self.config.monitor_channel_ids)
+                self.logger.debug(f"从列表获取频道: {self.config.monitor_channel_ids}")
             else:
                 # 字符串格式: "id1,id2,id3"
                 channel_ids = [cid.strip() for cid in self.config.monitor_channel_ids.split(',')]
                 monitor_channels.extend(channel_ids)
+                self.logger.debug(f"从字符串分割获取频道: {channel_ids}")
         elif hasattr(self.config, 'monitor_channel_id') and self.config.monitor_channel_id:
             # 单频道格式 (向后兼容)
             monitor_channels.append(self.config.monitor_channel_id)
+            self.logger.debug(f"从单频道获取: {self.config.monitor_channel_id}")
         
+        self.logger.info(f"最终监控频道列表: {monitor_channels}")
         return monitor_channels
     
     async def manual_cleanup(self, channel_id: str = None, days: int = 1):
@@ -228,12 +232,17 @@ class ChannelCleaner:
                 monitor_channels = self._get_monitor_channels()
                 total_deleted = 0
                 
+                self.logger.info(f"准备清理频道: {monitor_channels}")
                 for cid in monitor_channels:
+                    self.logger.info(f"正在处理频道ID: {cid} (类型: {type(cid)})")
                     try:
-                        channel = self.bot.get_channel(int(cid.strip()))
+                        channel_id = int(cid.strip())
+                        channel = self.bot.get_channel(channel_id)
                         if channel:
+                            self.logger.info(f"开始清理频道: {channel.name} ({channel_id})")
                             deleted_count = await self._cleanup_channel_days(channel, days)
                             total_deleted += deleted_count
+                            self.logger.info(f"频道 {channel.name} 清理完成，删除 {deleted_count} 条消息")
                             await asyncio.sleep(1)
                         else:
                             self.logger.warning(f"找不到频道: {cid}")
