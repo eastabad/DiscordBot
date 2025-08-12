@@ -1427,8 +1427,12 @@ class DiscordBot(commands.Bot):
             self.logger.info(f"正在启动API服务器在 {api_host}:{api_port}...")
             runner = await api_server.start_server(host=api_host, port=api_port)
             
-            # 启动Discord机器人
+            # 启动Discord机器人 (这是一个阻塞调用)
             self.logger.info("正在启动Discord机器人...")
+            
+            # 使用 asyncio.create_task 让两个服务并发运行
+            # 但由于 bot.start() 是主要的事件循环，我们直接调用它
+            # API服务器已经在运行，bot.start() 会保持程序运行
             await self.start(token, **kwargs)
             
         except Exception as e:
@@ -1439,5 +1443,6 @@ class DiscordBot(commands.Bot):
             if runner:
                 try:
                     await runner.cleanup()
-                except Exception:
-                    pass
+                    self.logger.info("API服务器已关闭")
+                except Exception as e:
+                    self.logger.error(f"清理API服务器时出错: {e}")
