@@ -13,6 +13,7 @@ from rate_limiter import RateLimiter
 from prediction_service import StockPredictionService
 from chart_analysis_service import ChartAnalysisService
 from channel_cleaner import ChannelCleaner
+from daily_logger import daily_logger
 import io
 import re
 
@@ -228,6 +229,17 @@ class DiscordBot(commands.Bot):
                     await message.remove_reaction("⏳", self.user)
                     await message.add_reaction("✅")
                     
+                    # 记录到日志系统
+                    daily_logger.log_request(
+                        user_id=user_id,
+                        username=username,
+                        request_type="chart",
+                        content=f"{symbol} {timeframe}",
+                        success=True,
+                        channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
+                        guild_name=message.guild.name if message.guild else None
+                    )
+                    
                     self.logger.info(f"成功发送图表: {symbol} {timeframe} 给用户 {message.author.name}")
                     
                 except discord.Forbidden:
@@ -239,6 +251,18 @@ class DiscordBot(commands.Bot):
                     
             else:
                 # 获取图表失败
+                # 记录失败到日志系统
+                daily_logger.log_request(
+                    user_id=user_id,
+                    username=username,
+                    request_type="chart",
+                    content=f"{symbol} {timeframe}",
+                    success=False,
+                    error="API调用失败",
+                    channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
+                    guild_name=message.guild.name if message.guild else None
+                )
+                
                 error_msg = self.chart_service.format_error_message(symbol, timeframe, "API调用失败")
                 detailed_error = (f"{message.author.mention} ❌ 获取图表失败！\n"
                                 f"• 符号: {symbol}\n"
@@ -251,6 +275,18 @@ class DiscordBot(commands.Bot):
                 await message.add_reaction("❌")
                 
         except Exception as e:
+            # 记录异常到日志系统
+            daily_logger.log_request(
+                user_id=user_id,
+                username=username,
+                request_type="chart",
+                content=message.content[:50],
+                success=False,
+                error=str(e),
+                channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
+                guild_name=message.guild.name if message.guild else None
+            )
+            
             self.logger.error(f"处理图表请求失败: {e}")
             await message.channel.send(
                 f"{message.author.mention} 处理请求时发生错误，请稍后重试"
@@ -342,6 +378,17 @@ class DiscordBot(commands.Bot):
                 # 移除处理中反应，添加成功反应
                 await message.remove_reaction("🔄", self.user)
                 await message.add_reaction("📈")
+                
+                # 记录到日志系统
+                daily_logger.log_request(
+                    user_id=user_id,
+                    username=username,
+                    request_type="prediction",
+                    content=symbol,
+                    success=True,
+                    channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
+                    guild_name=message.guild.name if message.guild else None
+                )
                 
                 self.logger.info(f'成功发送预测: {symbol}')
                 
@@ -448,6 +495,17 @@ class DiscordBot(commands.Bot):
                 # 移除处理中反应，添加成功反应
                 await message.remove_reaction("🔍", self.user)
                 await message.add_reaction("📊")
+                
+                # 记录到日志系统
+                daily_logger.log_request(
+                    user_id=user_id,
+                    username=username,
+                    request_type="analysis",
+                    content=f"{symbol} - {chart_image.filename}",
+                    success=True,
+                    channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
+                    guild_name=message.guild.name if message.guild else None
+                )
                 
                 self.logger.info(f'成功发送图表分析: {symbol}')
                 
@@ -1151,6 +1209,61 @@ class DiscordBot(commands.Bot):
             embed.set_footer(text=f"显示前10个用户，总计{len(exempt_users)}个豁免用户")
         
         await ctx.send(embed=embed)
+    
+    @commands.command(name='logs', aliases=['日志', '统计'])
+    @commands.has_permissions(administrator=True)
+    async def logs_command(self, ctx: commands.Context):
+        """查看今日请求日志统计（仅管理员）"""
+        try:
+            summary = daily_logger.get_today_summary()
+            
+            embed = discord.Embed(
+                title="📊 今日请求统计",
+                description=f"日期: {summary['date']}",
+                color=0x00aaff
+            )
+            
+            # 总体统计
+            embed.add_field(
+                name="总体数据", 
+                value=f"总请求: {summary['total_requests']}\n"
+                      f"成功: {summary.get('success_count', 0)}\n"
+                      f"失败: {summary.get('failed_count', 0)}\n"
+                      f"成功率: {summary['success_rate']}%", 
+                inline=True
+            )
+            
+            # 请求类型分布
+            types_str = ""
+            for req_type, count in summary['request_types'].items():
+                type_emoji = {"chart": "📊", "prediction": "📈", "analysis": "🖼️"}
+                types_str += f"{type_emoji.get(req_type, '📋')} {req_type}: {count}\n"
+            
+            embed.add_field(name="请求类型", value=types_str or "无", inline=True)
+            
+            # 活跃用户
+            if summary['users']:
+                users_str = ""
+                for username, stats in list(summary['users'].items())[:5]:  # 显示前5个用户
+                    users_str += f"• {username}: {stats['total']}次\n"
+                if len(summary['users']) > 5:
+                    users_str += f"... 等{len(summary['users'])}个用户"
+                embed.add_field(name="活跃用户", value=users_str, inline=False)
+            
+            # 最近请求
+            if summary['requests']:
+                recent_str = ""
+                for request in summary['requests'][-3:]:  # 显示最后3条
+                    time = request['timestamp'].split('T')[1][:5]
+                    status = "✅" if request.get('success', True) else "❌"
+                    content = request['content'][:20] + "..." if len(request['content']) > 20 else request['content']
+                    recent_str += f"{time} {status} {request['username']}: {content}\n"
+                embed.add_field(name="最近请求", value=recent_str, inline=False)
+            
+            await ctx.send(embed=embed)
+            
+        except Exception as e:
+            await ctx.send(f"❌ 获取日志统计失败: {str(e)}")
     
     async def manual_cleanup_command_direct(self, message):
         """直接处理手动清理命令"""

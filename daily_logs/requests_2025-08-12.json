@@ -1,0 +1,35 @@
+[
+  {
+    "timestamp": "2025-08-12T07:38:01.906720",
+    "user_id": "1234567890",
+    "username": "TestUser1",
+    "request_type": "chart",
+    "content": "AAPL 1h",
+    "success": true,
+    "error": null,
+    "channel": "test-channel",
+    "guild": "Test Guild"
+  },
+  {
+    "timestamp": "2025-08-12T07:38:02.008443",
+    "user_id": "2345678901",
+    "username": "TestUser2",
+    "request_type": "prediction",
+    "content": "TSLA",
+    "success": true,
+    "error": null,
+    "channel": "test-channel",
+    "guild": "Test Guild"
+  },
+  {
+    "timestamp": "2025-08-12T07:38:02.110496",
+    "user_id": "3456789012",
+    "username": "TestUser3",
+    "request_type": "analysis",
+    "content": "NVDA - chart.png",
+    "success": false,
+    "error": "图片无法识别",
+    "channel": "test-channel",
+    "guild": "Test Guild"
+  }
+]

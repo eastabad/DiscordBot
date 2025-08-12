@@ -19,6 +19,15 @@ This project is a simplified Python-based Discord bot designed to handle three c
 - VIP/豁免用户管理系统
 - 自动频道清理（每日凌晨2点UTC）
 
+✅ **实时日志系统集成** - 完整的用户请求追踪和统计
+- 创建 `daily_logger.py` 实时记录所有用户请求
+- 集成到三大核心功能：图表、预测、分析请求
+- JSON格式日志文件，按日期存储在 `daily_logs/` 目录
+- 记录成功/失败状态、用户信息、请求内容、频道信息
+- 创建 `log_viewer.py` 命令行工具查看历史统计
+- 新增管理员命令 `!logs` 在Discord中查看今日统计
+- 支持实时监控模式和多日趋势分析
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
