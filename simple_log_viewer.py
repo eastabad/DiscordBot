@@ -1,9 +1,54 @@
 from flask import Flask
 import json
 import os
+import subprocess
+import psutil
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
+
+def get_bot_status():
+    """获取机器人服务状态"""
+    status = {
+        'discord_bot': False,
+        'log_viewer': True,  # 当前服务运行中
+        'database': False,
+        'system_info': {}
+    }
+    
+    try:
+        # 检查Discord机器人进程
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                cmdline = ' '.join(proc.info['cmdline']) if proc.info['cmdline'] else ''
+                if 'simple_bot.py' in cmdline or 'bot.py' in cmdline:
+                    status['discord_bot'] = True
+                    break
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        
+        # 检查数据库连接
+        try:
+            import psycopg2
+            db_url = os.environ.get('DATABASE_URL')
+            if db_url:
+                conn = psycopg2.connect(db_url)
+                conn.close()
+                status['database'] = True
+        except:
+            pass
+            
+        # 系统信息
+        status['system_info'] = {
+            'cpu_percent': psutil.cpu_percent(),
+            'memory_percent': psutil.virtual_memory().percent,
+            'disk_percent': psutil.disk_usage('/').percent
+        }
+        
+    except Exception as e:
+        print(f"获取状态失败: {e}")
+    
+    return status
 
 def load_log_data(date=None):
     """加载指定日期的日志数据"""
@@ -17,7 +62,24 @@ def load_log_data(date=None):
         
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            return [json.loads(line.strip()) for line in f if line.strip()]
+            content = f.read().strip()
+            if not content:
+                return []
+                
+            # 尝试解析JSON数组格式
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError:
+                # 如果不是数组，尝试按行解析
+                logs = []
+                for line in content.split('\n'):
+                    line = line.strip()
+                    if line:
+                        try:
+                            logs.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            continue
+                return logs
     except Exception as e:
         print(f"读取日志文件失败: {e}")
         return []
@@ -32,6 +94,11 @@ def get_available_dates(days=7):
             dates.append(date)
     return dates
 
+@app.route('/api/status')
+def get_status():
+    """获取服务状态API"""
+    return get_bot_status()
+
 @app.route('/')
 def index():
     """主页"""
@@ -45,6 +112,7 @@ def show_date(date=None):
     
     logs = load_log_data(date)
     available_dates = get_available_dates(7)
+    bot_status = get_bot_status()
     
     # 生成HTML
     html = f'''
@@ -73,6 +141,19 @@ def show_date(date=None):
                 color: white;
                 padding: 20px;
                 text-align: center;
+            }}
+            .status-bar {{
+                margin-top: 15px; 
+                padding: 10px; 
+                background: rgba(255,255,255,0.1); 
+                border-radius: 5px;
+                display: flex; 
+                gap: 20px; 
+                justify-content: center; 
+                flex-wrap: wrap;
+            }}
+            .status-bar span {{
+                font-size: 14px;
             }}
             .date-nav {{
                 padding: 15px;
@@ -158,6 +239,12 @@ def show_date(date=None):
             <div class="header">
                 <h1>📊 Discord Bot 详细日志</h1>
                 <p>用户请求详细记录与统计分析</p>
+                <div class="status-bar">
+                    <span id="discord-status">🤖 Discord Bot: <span style="color: #ffc107;">检查中...</span></span>
+                    <span id="db-status">🗄️ 数据库: <span style="color: #ffc107;">检查中...</span></span>
+                    <span id="log-status">📊 日志查看器: <span style="color: #28a745;">运行中</span></span>
+                    <span id="system-info">💻 系统: <span style="color: #ffc107;">检查中...</span></span>
+                </div>
             </div>
             
             <div class="date-nav">
@@ -264,7 +351,53 @@ def show_date(date=None):
         </div>
         
         <script>
-            // 30秒自动刷新
+            // 实时更新状态
+            function updateStatus() {
+                fetch('/api/status')
+                    .then(response => response.json())
+                    .then(status => {
+                        const discordStatus = document.getElementById('discord-status');
+                        const dbStatus = document.getElementById('db-status');
+                        const systemInfo = document.getElementById('system-info');
+                        
+                        if (discordStatus) {
+                            const discordSpan = discordStatus.querySelector('span');
+                            if (status.discord_bot) {
+                                discordSpan.textContent = '运行中';
+                                discordSpan.style.color = '#28a745';
+                            } else {
+                                discordSpan.textContent = '离线';
+                                discordSpan.style.color = '#dc3545';
+                            }
+                        }
+                        
+                        if (dbStatus) {
+                            const dbSpan = dbStatus.querySelector('span');
+                            if (status.database) {
+                                dbSpan.textContent = '连接正常';
+                                dbSpan.style.color = '#28a745';
+                            } else {
+                                dbSpan.textContent = '连接失败';
+                                dbSpan.style.color = '#dc3545';
+                            }
+                        }
+                        
+                        if (systemInfo && status.system_info) {
+                            const systemSpan = systemInfo.querySelector('span');
+                            const cpu = status.system_info.cpu_percent || 0;
+                            const mem = status.system_info.memory_percent || 0;
+                            systemSpan.textContent = `CPU ${cpu.toFixed(1)}% | 内存 ${mem.toFixed(1)}%`;
+                            systemSpan.style.color = cpu > 80 || mem > 80 ? '#ffc107' : '#28a745';
+                        }
+                    })
+                    .catch(error => console.log('Status update failed:', error));
+            }
+            
+            // 每5秒更新状态
+            updateStatus();
+            setInterval(updateStatus, 5000);
+            
+            // 每30秒刷新页面数据
             setTimeout(function() {
                 location.reload();
             }, 30000);

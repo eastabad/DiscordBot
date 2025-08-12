@@ -64,5 +64,16 @@
     "error": "图片无法识别",
     "channel": "test-channel",
     "guild": "Test Guild"
+  },
+  {
+    "timestamp": "2025-08-12T08:02:06.626974",
+    "user_id": "1145170623354638418",
+    "username": "easton",
+    "request_type": "chart",
+    "content": "AAPL 15m",
+    "success": true,
+    "error": null,
+    "channel": "img",
+    "guild": "TradingView Alerts"
   }
 ]
