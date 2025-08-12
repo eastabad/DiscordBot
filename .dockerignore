@@ -1,0 +1,52 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# 开发文件
+*.md
+!README.md
+!DEPLOYMENT_*.md
+.gitignore
+.replit
+replit.nix
+
+# 测试文件  
+test_*
+*_test.py
+
+# 临时文件
+daily_logs/*
+discord_bot.log
+app.log
+attached_assets/*
+
+# 环境文件
+.env
+.env.local
+.env.example
+
+# IDE文件
+.vscode
+.idea
+
+# Docker文件
+Dockerfile
+docker-compose.yml
+.dockerignore

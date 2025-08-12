@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  discord-bot:
+    build: .
+    container_name: discord-bot
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - CHART_IMG_API_KEY=${CHART_IMG_API_KEY}
+      - LAYOUT_ID=${LAYOUT_ID}
+      - TRADINGVIEW_SESSION_ID=${TRADINGVIEW_SESSION_ID}
+      - TRADINGVIEW_SESSION_ID_SIGN=${TRADINGVIEW_SESSION_ID_SIGN}
+      - MONITOR_CHANNEL_IDS=${MONITOR_CHANNEL_IDS}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - DATABASE_URL=postgresql://postgres:discord123@db:5432/discord_bot
+    volumes:
+      - ./daily_logs:/app/daily_logs
+      - ./attached_assets:/app/attached_assets
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - discord-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: postgres:16
+    container_name: discord-bot-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=discord_bot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=discord123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - discord-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+
+networks:
+  discord-net:
+    driver: bridge
