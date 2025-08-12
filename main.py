@@ -13,14 +13,21 @@ from api_server import DiscordAPIServer
 
 def setup_logging():
     """设置日志配置"""
+    # 设置日志级别为INFO减少部署时的噪音
+    log_level = logging.INFO
+    
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=log_level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler('discord_bot.log', encoding='utf-8'),
             logging.StreamHandler(sys.stdout)
         ]
     )
+    
+    # 减少discord.py的调试输出
+    discord_logger = logging.getLogger('discord')
+    discord_logger.setLevel(logging.WARNING)
 
 async def main():
     """主函数"""
@@ -43,8 +50,11 @@ async def main():
         # 创建机器人
         bot = DiscordBot(config)
         
-        # 使用新方法启动机器人和API服务器
-        logger.info("正在启动Discord机器人和API服务器...")
+        # 启动机器人和API服务器
+        logger.info("🚀 启动Discord机器人和API服务器...")
+        logger.info("🌐 API服务器将在 http://0.0.0.0:5000 启动")
+        logger.info("🤖 Discord机器人正在连接...")
+        
         await bot.start_with_api(config.discord_token, host='0.0.0.0', port=5000)
         
     except KeyboardInterrupt:
