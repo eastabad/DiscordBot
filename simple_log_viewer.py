@@ -97,7 +97,18 @@ def get_available_dates(days=7):
 @app.route('/api/status')
 def get_status():
     """获取服务状态API"""
-    return get_bot_status()
+    from flask import jsonify
+    try:
+        status = get_bot_status()
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({
+            'discord_bot': False,
+            'log_viewer': True,
+            'database': False,
+            'system_info': {'cpu_percent': 0, 'memory_percent': 0, 'disk_percent': 0},
+            'error': str(e)
+        })
 
 @app.route('/')
 def index():
