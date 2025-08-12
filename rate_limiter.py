@@ -31,7 +31,14 @@ class RateLimiter:
         try:
             db = get_db_session()
             
-            # 首先检查用户是否在豁免列表中
+            # VPS部署检查：如果设置了VPS_DEPLOYMENT环境变量，所有用户都无限制
+            import os
+            if os.getenv('VPS_DEPLOYMENT', '').lower() in ['true', '1', 'yes']:
+                self.logger.info(f"VPS部署模式：用户 {username} ({user_id}) 无限制使用")
+                db.close()
+                return True, 0, 999  # VPS用户无限制
+            
+            # 检查用户是否在豁免列表中
             exempt_user = db.query(ExemptUser).filter(ExemptUser.user_id == user_id).first()
             if exempt_user:
                 self.logger.info(f"用户 {username} ({user_id}) 在豁免列表中，无限制")
@@ -90,6 +97,11 @@ class RateLimiter:
         """
         try:
             db = get_db_session()
+            
+            # VPS部署检查：如果是VPS部署，仍然记录但不限制
+            import os
+            is_vps_deployment = os.getenv('VPS_DEPLOYMENT', '').lower() in ['true', '1', 'yes']
+            
             today = date.today()
             
             # 查找用户今日记录
@@ -117,7 +129,10 @@ class RateLimiter:
                 db.add(user_record)
             
             db.commit()
-            self.logger.info(f"记录用户 {username} 请求，今日总计: {user_record.request_count}")
+            if is_vps_deployment:
+                self.logger.info(f"VPS部署模式：记录用户 {username} 请求，今日总计: {user_record.request_count} (无限制)")
+            else:
+                self.logger.info(f"记录用户 {username} 请求，今日总计: {user_record.request_count}")
             
             db.close()
             return True

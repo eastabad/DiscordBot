@@ -4,6 +4,15 @@ This project is a simplified Python-based Discord bot designed to handle three c
 
 ## Recent Changes (August 12, 2025)
 
+✅ **VPS无限制用户功能** - VPS部署用户自动获得无限制使用权限
+- 新增环境变量 `VPS_DEPLOYMENT=true` 启用所有用户无限制模式
+- 修改 `rate_limiter.py` 检查VPS部署状态，自动豁免所有用户
+- 更新Docker配置支持VPS_DEPLOYMENT环境变量
+- 创建VPS部署状态查看命令 `!vps_status` (管理员专用)
+- 生成专用部署脚本 `vps-unlimited-deploy.sh` 一键启用无限制模式
+- 完整文档：VPS_UNLIMITED_DEPLOYMENT_GUIDE.md
+- VPS用户无需手动添加豁免，系统自动识别并提供无限制服务
+
 ✅ **VPS Docker部署完整方案** - 创建完整的自主部署解决方案
 - 创建完整Docker容器化配置：Dockerfile, docker-compose.yml, docker-requirements.txt  
 - 开发一键部署脚本 `vps-deploy.sh` 支持Ubuntu/Debian/CentOS自动安装Docker

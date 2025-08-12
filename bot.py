@@ -1242,6 +1242,32 @@ class DiscordBot(commands.Bot):
         
         await ctx.send(embed=embed)
     
+    @commands.command(name='vps_status')
+    @commands.has_permissions(administrator=True)
+    async def vps_deployment_status(self, ctx: commands.Context):
+        """查看VPS部署状态（仅管理员）"""
+        import os
+        is_vps_deployment = os.getenv('VPS_DEPLOYMENT', '').lower() in ['true', '1', 'yes']
+        
+        embed = discord.Embed(
+            title="🖥️ VPS部署状态",
+            color=0x00ff00 if is_vps_deployment else 0xff9900
+        )
+        
+        if is_vps_deployment:
+            embed.add_field(name="部署模式", value="✅ VPS部署模式", inline=True)
+            embed.add_field(name="用户限制", value="🚫 所有用户无限制", inline=True)
+            embed.add_field(name="状态", value="✅ 激活", inline=True)
+            embed.description = "当前运行在VPS部署模式下，所有用户都可以无限制使用所有功能。"
+        else:
+            embed.add_field(name="部署模式", value="🔄 标准模式", inline=True)
+            embed.add_field(name="用户限制", value="⏳ 每日3次限制", inline=True)
+            embed.add_field(name="状态", value="⚠️ 标准限制", inline=True)
+            embed.description = "当前运行在标准模式下，用户受到每日请求限制约束。"
+            
+        embed.set_footer(text="要启用VPS部署模式，请设置环境变量 VPS_DEPLOYMENT=true")
+        await ctx.send(embed=embed)
+    
     @commands.command(name='logs', aliases=['日志', '统计'])
     async def logs_command(self, ctx: commands.Context):
         """查看今日请求日志统计"""
