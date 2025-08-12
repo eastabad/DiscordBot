@@ -43,21 +43,9 @@ async def main():
         # 创建机器人
         bot = DiscordBot(config)
         
-        # 创建API服务器
-        api_server = DiscordAPIServer(bot)
-        
-        # 启动API服务器
-        logger.info("正在启动API服务器...")
-        runner = await api_server.start_server(host='0.0.0.0', port=5000)
-        
-        # 启动机器人
-        logger.info("正在启动Discord机器人...")
-        
-        # 并行运行机器人和API服务器
-        bot_task = asyncio.create_task(bot.start(config.discord_token))
-        
-        # 等待机器人任务完成
-        await bot_task
+        # 使用新方法启动机器人和API服务器
+        logger.info("正在启动Discord机器人和API服务器...")
+        await bot.start_with_api(config.discord_token, host='0.0.0.0', port=5000)
         
     except KeyboardInterrupt:
         logger.info("收到中断信号，正在关闭服务...")

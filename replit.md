@@ -2,6 +2,20 @@
 
 This project is a Python-based Discord bot designed to monitor Discord channels for `@mentions` and forward channel information to external webhooks. Its primary purpose is to provide automated message forwarding, bridging Discord conversations with external systems through robust webhook integrations. The bot includes comprehensive error handling, retry mechanisms, and detailed logging, ensuring reliable data transmission. Key capabilities include automated chart image delivery, AI-powered stock trend prediction and analysis, and intelligent channel cleanup.
 
+## Recent Changes (August 12, 2025)
+
+✅ **Deployment Health Check System** - Added comprehensive health check endpoints for Replit deployments
+- Implemented `start_with_api()` method in DiscordBot class to run both Discord bot and HTTP API server
+- Added proper health check endpoint at `/api/health` returning JSON status with bot status
+- Configured root endpoint `/` to return proper 200 response with API documentation
+- Fixed deployment entry point to use `python main.py` command
+- Resolved address conflicts by removing redundant workflow configurations
+
+✅ **API Server Integration** - Optimized concurrent startup of Discord bot and web server
+- Both services now start simultaneously on port 5000 with proper error handling
+- API server provides real-time bot status in health checks
+- Deployment-ready configuration with proper resource cleanup
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
