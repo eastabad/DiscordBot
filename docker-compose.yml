@@ -15,7 +15,7 @@ services:
       - TRADINGVIEW_SESSION_ID_SIGN=${TRADINGVIEW_SESSION_ID_SIGN}
       - MONITOR_CHANNEL_IDS=${MONITOR_CHANNEL_IDS}
       - WEBHOOK_URL=${WEBHOOK_URL}
-      - VPS_DEPLOYMENT=${VPS_DEPLOYMENT:-true}
+
       - DATABASE_URL=postgresql://postgres:discord123@db:5432/discord_bot
     volumes:
       - ./daily_logs:/app/daily_logs
