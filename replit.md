@@ -4,6 +4,15 @@ This project is a simplified Python-based Discord bot designed to handle three c
 
 ## Recent Changes (August 12, 2025)
 
+✅ **VPS自动更新系统** - 一键代码部署到VPS生产环境
+- 创建 `update-vps.sh` 自动化VPS代码更新脚本
+- 开发 `quick-deploy.sh` 本地到VPS完整部署流程
+- 配置文件管理：`vps-config.sh` 安全存储VPS连接信息
+- 自动化流程：SSH连接、代码拉取、Docker重建、服务重启、健康检查
+- 安全特性：配置备份、Git stash保护、一键回滚功能
+- 数据库自动修复：集成 `fix-database.py` 确保用户限制功能正常
+- 完整文档：VPS_AUTO_UPDATE_GUIDE.md
+
 ✅ **手动用户豁免系统** - 管理员通过Discord命令精确控制用户权限
 - 保持原有的手动豁免设计，管理员可通过 `!exempt_add` 添加特定用户豁免
 - 支持豁免用户管理：`!exempt_add`, `!exempt_remove`, `!exempt_list` 命令
