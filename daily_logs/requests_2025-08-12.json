@@ -86,5 +86,27 @@
     "error": null,
     "channel": "img",
     "guild": "TradingView Alerts"
+  },
+  {
+    "timestamp": "2025-08-12T08:30:43.737440",
+    "user_id": "1145170623354638418",
+    "username": "easton",
+    "request_type": "chart",
+    "content": "PLTR 1h",
+    "success": false,
+    "error": "API调用失败",
+    "channel": "img",
+    "guild": "TradingView Alerts"
+  },
+  {
+    "timestamp": "2025-08-12T08:32:02.411595",
+    "user_id": "1145170623354638418",
+    "username": "easton",
+    "request_type": "chart",
+    "content": "AAPL 15m",
+    "success": true,
+    "error": null,
+    "channel": "img",
+    "guild": "TradingView Alerts"
   }
 ]

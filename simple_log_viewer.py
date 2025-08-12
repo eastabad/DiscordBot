@@ -422,4 +422,22 @@ def show_date(date=None):
 if __name__ == '__main__':
     # 确保日志目录存在
     os.makedirs("daily_logs", exist_ok=True)
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    
+    # 尝试不同的端口，避免冲突
+    ports = [5001, 5002, 5003, 8000, 8080]
+    port_to_use = 5001
+    
+    for port in ports:
+        try:
+            print(f"尝试启动日志查看器在端口 {port}...")
+            app.run(host='0.0.0.0', port=port, debug=False)
+            port_to_use = port
+            break
+        except OSError as e:
+            if "Address already in use" in str(e):
+                print(f"端口 {port} 被占用，尝试下一个...")
+                continue
+            else:
+                raise
+    else:
+        print("❌ 所有端口都被占用，无法启动日志查看器")
