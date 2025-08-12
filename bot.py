@@ -116,31 +116,32 @@ class DiscordBot(commands.Bot):
         )
         
         # 检查命令（包括管理员命令） - 优先级最高
-        if '!' in message.content:
-            # 检查是否包含命令
-            content_parts = message.content.split()
-            for part in content_parts:
-                if part.startswith('!'):
-                    command_name = part[1:]  # 移除!前缀
-                    self.logger.info(f'检测到命令: {part}')
-                    
-                    # 直接调用相应的命令处理函数
-                    if command_name == 'cleanup_now':
-                        await self.manual_cleanup_command_direct(message)
-                        return
-                    elif command_name == 'cleanup_status':
-                        await self.cleanup_status_command_direct(message)
-                        return
-                    elif command_name == 'cleanup_channel':
-                        await self.cleanup_specific_channel_direct(message)
-                        return
-                    elif command_name == 'help_admin':
-                        await self.help_admin_command_direct(message)
-                        return
-                    else:
-                        # 对于其他命令，使用正常的命令处理
-                        await self.process_commands(message)
-                        return
+        if message.content.startswith('!'):
+            command_name = message.content.split()[0][1:]  # 移除!前缀
+            self.logger.info(f'检测到命令: !{command_name}')
+            
+            # 管理员命令优先处理
+            if self.has_admin_command(message.content):
+                await self.handle_admin_command(message)
+                return
+            
+            # 其他特殊命令
+            if command_name == 'cleanup_now':
+                await self.manual_cleanup_command_direct(message)
+                return
+            elif command_name == 'cleanup_status':
+                await self.cleanup_status_command_direct(message)
+                return
+            elif command_name == 'cleanup_channel':
+                await self.cleanup_specific_channel_direct(message)
+                return
+            elif command_name == 'help_admin':
+                await self.help_admin_command_direct(message)
+                return
+            else:
+                # 其他commands框架命令
+                await self.process_commands(message)
+                return
         
         if is_mentioned and is_monitored_channel and self.has_stock_command(message.content):
             self.logger.info(f'在监控频道中检测到提及和股票命令，开始处理股票图表请求...')
@@ -563,7 +564,7 @@ class DiscordBot(commands.Bot):
     
     def has_admin_command(self, content: str) -> bool:
         """检查消息是否包含管理员命令"""
-        admin_commands = ['!vip_add', '!vip_remove', '!vip_list', '!quota', '!help_admin']
+        admin_commands = ['!vip_add', '!vip_remove', '!vip_list', '!quota', '!help_admin', '!exempt_add', '!exempt_remove', '!exempt_list']
         content_lower = content.lower().strip()
         return any(content_lower.startswith(cmd) for cmd in admin_commands)
     
@@ -582,19 +583,29 @@ class DiscordBot(commands.Bot):
         try:
             user_id = str(message.author.id)
             username = message.author.display_name or message.author.name
+            content = message.content.strip()
             
-            # 检查管理员权限
+            # !quota命令允许所有用户使用
+            if content.lower().startswith('!quota'):
+                await self.handle_quota_command(message, content)
+                return
+            
+            # 其他命令需要管理员权限
             if not self.is_admin_user(user_id):
                 await message.reply("❌ 您没有管理员权限执行此命令")
                 return
-            
-            content = message.content.strip()
             
             if content.lower().startswith('!vip_add'):
                 await self.handle_vip_add_command(message, content)
             elif content.lower().startswith('!vip_remove'):
                 await self.handle_vip_remove_command(message, content)
             elif content.lower().startswith('!vip_list'):
+                await self.handle_vip_list_command(message)
+            elif content.lower().startswith('!exempt_add'):
+                await self.handle_vip_add_command(message, content)
+            elif content.lower().startswith('!exempt_remove'):
+                await self.handle_vip_remove_command(message, content)
+            elif content.lower().startswith('!exempt_list'):
                 await self.handle_vip_list_command(message)
             elif content.lower().startswith('!quota'):
                 await self.handle_quota_command(message, content)
