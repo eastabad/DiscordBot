@@ -4,6 +4,13 @@ This project is a simplified Python-based Discord bot designed to handle three c
 
 ## Recent Changes (August 12, 2025)
 
+✅ **部署问题修复** - 解决Replit云部署健康检查失败问题
+- 创建专用部署入口点 `deploy_main.py` 和 `main_deploy.py`
+- 修复 `simple_bot.py` 中的类型安全问题（Discord token验证）
+- 创建 `deploy_with_health.py` 包含HTTP健康检查服务器（端口5000）
+- 确保部署系统可以找到正确的主入口点并通过健康检查
+- 维持纯Discord机器人架构，无需复杂的API服务器
+
 ✅ **系统架构简化** - 移除API服务器，专注核心Discord机器人功能
 - 创建简化版入口点 `simple_bot.py`，去掉API服务器组件
 - 移除 `start_with_api` 方法，使用纯Discord机器人模式

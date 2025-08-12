@@ -55,6 +55,11 @@ async def main():
         
         logger.info("🤖 连接Discord机器人...")
         
+        # 确保discord_token存在
+        if not config.discord_token:
+            logger.error("❌ Discord token 为空")
+            sys.exit(1)
+        
         # 直接启动Discord机器人，不启动API服务器
         await bot.start(config.discord_token)
         
