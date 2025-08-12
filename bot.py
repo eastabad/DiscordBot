@@ -237,7 +237,7 @@ class DiscordBot(commands.Bot):
                         content=f"{symbol} {timeframe}",
                         success=True,
                         channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
-                        guild_name=message.guild.name if message.guild else None
+                        guild_name=message.guild.name if message.guild else ""
                     )
                     
                     self.logger.info(f"成功发送图表: {symbol} {timeframe} 给用户 {message.author.name}")
@@ -260,7 +260,7 @@ class DiscordBot(commands.Bot):
                     success=False,
                     error="API调用失败",
                     channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
-                    guild_name=message.guild.name if message.guild else None
+                    guild_name=message.guild.name if message.guild else ""
                 )
                 
                 error_msg = self.chart_service.format_error_message(symbol, timeframe, "API调用失败")
@@ -276,16 +276,19 @@ class DiscordBot(commands.Bot):
                 
         except Exception as e:
             # 记录异常到日志系统
-            daily_logger.log_request(
-                user_id=user_id,
-                username=username,
-                request_type="chart",
-                content=message.content[:50],
-                success=False,
-                error=str(e),
-                channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
-                guild_name=message.guild.name if message.guild else None
-            )
+            try:
+                daily_logger.log_request(
+                    user_id=user_id,
+                    username=username,
+                    request_type="chart",
+                    content=message.content[:50],
+                    success=False,
+                    error=str(e),
+                    channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
+                    guild_name=message.guild.name if message.guild else ""
+                )
+            except:
+                pass
             
             self.logger.error(f"处理图表请求失败: {e}")
             await message.channel.send(
@@ -387,7 +390,7 @@ class DiscordBot(commands.Bot):
                     content=symbol,
                     success=True,
                     channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
-                    guild_name=message.guild.name if message.guild else None
+                    guild_name=message.guild.name if message.guild else ""
                 )
                 
                 self.logger.info(f'成功发送预测: {symbol}')
@@ -504,7 +507,7 @@ class DiscordBot(commands.Bot):
                     content=f"{symbol} - {chart_image.filename}",
                     success=True,
                     channel_name=message.channel.name if hasattr(message.channel, 'name') else "DM",
-                    guild_name=message.guild.name if message.guild else None
+                    guild_name=message.guild.name if message.guild else ""
                 )
                 
                 self.logger.info(f'成功发送图表分析: {symbol}')
@@ -1084,10 +1087,18 @@ class DiscordBot(commands.Bot):
         if isinstance(error, commands.CommandNotFound):
             return
             
-        self.logger.error(f'命令错误在 {ctx.command}: {error}')
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.send("❌ 您没有权限执行此命令")
+            return
+            
+        if isinstance(error, commands.CheckFailure):
+            await ctx.send("❌ 权限检查失败")
+            return
+            
+        self.logger.error(f'命令错误在 {ctx.command}: {error}', exc_info=True)
         
         try:
-            await ctx.send(f'执行命令时发生错误: {error}')
+            await ctx.send(f'❌ 执行命令时发生错误: {str(error)}')
         except:
             pass
             
@@ -1211,10 +1222,11 @@ class DiscordBot(commands.Bot):
         await ctx.send(embed=embed)
     
     @commands.command(name='logs', aliases=['日志', '统计'])
-    @commands.has_permissions(administrator=True)
     async def logs_command(self, ctx: commands.Context):
-        """查看今日请求日志统计（仅管理员）"""
+        """查看今日请求日志统计"""
         try:
+            # 简化权限检查 - 允许所有用户查看基本统计
+            # 后续可以根据需要重新加强权限控制
             summary = daily_logger.get_today_summary()
             
             embed = discord.Embed(
