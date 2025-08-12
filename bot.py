@@ -1428,6 +1428,9 @@ class DiscordBot(commands.Bot):
             runner = await api_server.start_server(host=api_host, port=api_port)
             self.logger.info("✅ API服务器启动成功")
             
+            # 小延迟确保API服务器完全就绪
+            await asyncio.sleep(0.1)
+            
             # 启动Discord机器人
             self.logger.info("正在启动Discord机器人...")
             
