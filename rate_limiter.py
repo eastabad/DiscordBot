@@ -2,6 +2,7 @@
 用户请求频率限制管理
 处理每日请求限制检查和更新
 """
+import os
 import logging
 from datetime import datetime, timezone, date
 from typing import Optional, Tuple
@@ -74,8 +75,13 @@ class RateLimiter:
             
         except Exception as e:
             self.logger.error(f"检查用户限制时发生错误: {e}")
-            # 发生错误时允许请求，避免阻塞服务
-            return True, 0, self.daily_limit
+            self.logger.error(f"数据库URL: {os.environ.get('DATABASE_URL', 'NOT_SET')}")
+            try:
+                db.close()
+            except:
+                pass
+            # 发生错误时，为了安全起见，拒绝请求
+            return False, 0, 0
     
     def record_request(self, user_id: str, username: str) -> bool:
         """
@@ -125,6 +131,11 @@ class RateLimiter:
             
         except Exception as e:
             self.logger.error(f"记录用户请求时发生错误: {e}")
+            self.logger.error(f"数据库URL: {os.environ.get('DATABASE_URL', 'NOT_SET')}")
+            try:
+                db.close()
+            except:
+                pass
             return False
     
     def get_user_stats(self, user_id: str) -> Optional[dict]:

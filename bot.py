@@ -52,6 +52,23 @@ class DiscordBot(commands.Bot):
             # 输出机器人的意图信息用于调试
             self.logger.info(f'机器人意图: message_content={self.intents.message_content}, messages={self.intents.messages}, guild_messages={self.intents.guild_messages}')
         
+        # 初始化数据库表
+        try:
+            import os
+            from models import create_tables
+            create_tables()
+            self.logger.info("✅ 数据库表初始化完成")
+            
+            # 测试用户限制功能
+            from rate_limiter import RateLimiter
+            test_rate_limiter = RateLimiter()
+            self.logger.info("✅ 用户限制功能验证完成")
+            
+        except Exception as e:
+            self.logger.error(f"❌ 数据库初始化失败: {e}")
+            self.logger.error(f"DATABASE_URL: {os.environ.get('DATABASE_URL', 'NOT_SET')}")
+            self.logger.error("用户限制功能可能无法正常工作")
+        
         # 设置机器人状态
         await self.change_presence(
             activity=discord.Activity(

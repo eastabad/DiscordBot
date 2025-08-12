@@ -4,7 +4,7 @@
 """
 import os
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, text
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
@@ -45,8 +45,30 @@ class ExemptUser(Base):
 
 # 数据库连接设置
 DATABASE_URL = os.environ.get('DATABASE_URL')
-engine = create_engine(DATABASE_URL, echo=False)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL环境变量未设置，用户限制功能将无法工作")
+
+try:
+    # 创建引擎，添加连接池配置
+    engine = create_engine(
+        DATABASE_URL, 
+        echo=False,
+        pool_pre_ping=True,  # 验证连接有效性
+        pool_recycle=300,    # 5分钟回收连接
+        connect_args={"connect_timeout": 10}  # 10秒连接超时
+    )
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    
+    # 测试数据库连接
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    print("✅ 数据库连接成功")
+    
+except Exception as e:
+    print(f"❌ 数据库连接失败: {e}")
+    print(f"DATABASE_URL: {DATABASE_URL}")
+    raise
 
 def create_tables():
     """创建数据库表"""
@@ -55,7 +77,14 @@ def create_tables():
 
 def get_db_session():
     """获取数据库会话"""
-    return SessionLocal()
+    try:
+        session = SessionLocal()
+        # 测试连接
+        session.execute(text("SELECT 1"))
+        return session
+    except Exception as e:
+        print(f"❌ 获取数据库会话失败: {e}")
+        raise
 
 if __name__ == "__main__":
     # 创建表

@@ -119,5 +119,16 @@
     "error": null,
     "channel": "img",
     "guild": "TradingView Alerts"
+  },
+  {
+    "timestamp": "2025-08-12T14:51:30.986829",
+    "user_id": "1145170623354638418",
+    "username": "easton",
+    "request_type": "chart",
+    "content": "TSLA 5m",
+    "success": true,
+    "error": null,
+    "channel": "img",
+    "guild": "TradingView Alerts"
   }
 ]
