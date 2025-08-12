@@ -7,6 +7,7 @@ dependencies = [
     "aiohttp>=3.12.15",
     "anthropic>=0.62.0",
     "discord-py>=2.5.2",
+    "flask>=3.1.1",
     "psycopg2-binary>=2.9.10",
     "sqlalchemy>=2.0.43",
 ]

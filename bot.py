@@ -455,13 +455,27 @@ class DiscordBot(commands.Bot):
                 )
                 return
             
-            # 从消息中尝试提取股票符号（可选）
+            # 从消息中提取股票符号（必需）
             symbol = ""
-            symbol_match = re.search(r'([A-Z][A-Z:]*[A-Z]+)', message.content, re.IGNORECASE)
-            if symbol_match:
-                symbol = symbol_match.group(1).upper()
-                if ':' not in symbol:
-                    symbol = f"NASDAQ:{symbol}"
+            content_parts = message.content.strip().split()
+            
+            # 查找股票代码（跳过@mention部分）
+            for part in content_parts[1:]:
+                if not part.startswith('!') and len(part) >= 2 and len(part) <= 6 and part.isalnum():
+                    symbol = part.upper()
+                    if ':' not in symbol:
+                        symbol = f"NASDAQ:{symbol}"
+                    break
+            
+            # 如果没有找到股票代码，要求用户提供
+            if not symbol:
+                await message.channel.send(
+                    f"{message.author.mention} ❌ **请提供股票代码进行图片分析**\n\n"
+                    f"正确格式：`@{self.user.name} AAPL` + 上传图片\n"
+                    f"例如：`@{self.user.name} TSLA` 然后上传股票图表截图\n\n"
+                    f"这样我就能准确记录您分析了哪只股票的图表 📊"
+                )
+                return
             
             # 记录请求（在实际处理前记录，豁免用户跳过）
             if not is_exempt:
