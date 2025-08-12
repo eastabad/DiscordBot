@@ -28,6 +28,15 @@ This project is a simplified Python-based Discord bot designed to handle three c
 - 新增管理员命令 `!logs` 在Discord中查看今日统计
 - 支持实时监控模式和多日趋势分析
 
+✅ **专用日志查看网页** - 替代Discord命令的完整解决方案 
+- 创建 `simple_log_viewer.py` Web应用，提供详细的日志查看界面
+- 实时服务状态监控：Discord机器人、数据库、系统资源监控
+- 按用户分组显示所有请求详情，包括具体股票代码和时间戳
+- 支持多日期查看，每30秒自动刷新最新数据
+- 修复JSON数组格式兼容性，正确显示所有历史记录
+- 图片分析功能改进：强制要求用户提供股票代码（@机器人 AAPL + 图片）
+- 网页端口5000，包含实时状态API接口
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.

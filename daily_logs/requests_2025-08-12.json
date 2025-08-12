@@ -75,5 +75,16 @@
     "error": null,
     "channel": "img",
     "guild": "TradingView Alerts"
+  },
+  {
+    "timestamp": "2025-08-12T08:06:38.650389",
+    "user_id": "1145170623354638418",
+    "username": "easton",
+    "request_type": "prediction",
+    "content": "MSTR",
+    "success": true,
+    "error": null,
+    "channel": "img",
+    "guild": "TradingView Alerts"
   }
 ]
