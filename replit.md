@@ -1,22 +1,23 @@
 # Overview
 
-This project is a Python-based Discord bot designed to monitor Discord channels for `@mentions` and forward channel information to external webhooks. Its primary purpose is to provide automated message forwarding, bridging Discord conversations with external systems through robust webhook integrations. The bot includes comprehensive error handling, retry mechanisms, and detailed logging, ensuring reliable data transmission. Key capabilities include automated chart image delivery, AI-powered stock trend prediction and analysis, and intelligent channel cleanup.
+This project is a simplified Python-based Discord bot designed to handle three core user requests: stock chart generation, stock analysis, and image analysis. The bot focuses on providing high-quality trading insights while maintaining user request limits and automated channel cleanup. The system has been streamlined by removing the API server component to focus purely on Discord bot functionality.
 
 ## Recent Changes (August 12, 2025)
 
-✅ **Deployment System Fully Fixed** - Completely resolved all deployment health check issues
-- Enhanced `app.py` entry point with improved startup sequence and error handling
-- Optimized health check endpoints (`/api/health` and `/`) to always return 200 status for deployment systems
-- Fixed API server startup timing with proper concurrent Discord bot and HTTP server initialization
-- Updated root endpoint with improved HTML response and deployment-specific status indicators
-- Added fallback responses to ensure health checks never fail during deployment
+✅ **系统架构简化** - 移除API服务器，专注核心Discord机器人功能
+- 创建简化版入口点 `simple_bot.py`，去掉API服务器组件
+- 移除 `start_with_api` 方法，使用纯Discord机器人模式
+- 保留三大核心功能：图表获取、股票分析、图片分析
+- 保留用户限制系统和频道清理功能
+- 简化部署配置，使用console输出模式
 
-✅ **Production Deployment Ready** - Fully operational system with verified health checks
-- Both Discord bot and HTTP API server start simultaneously on port 5000 with proper error handling
-- Health checks verified working with immediate 200 responses and comprehensive status information
-- Environment variable validation ensures proper configuration before startup
-- All endpoints tested and confirmed working (root `/`, `/api/health`, message APIs)
-- Deployment configuration fully optimized for Replit cloud deployment systems
+✅ **Discord机器人核心功能保留** - 专注用户核心需求
+- 股票图表生成与TradingView集成 
+- AI驱动的股票分析和预测
+- 图表图像分析功能
+- 用户每日请求限制（3次/天）
+- VIP/豁免用户管理系统
+- 自动频道清理（每日凌晨2点UTC）
 
 # User Preferences
 
@@ -27,9 +28,10 @@ Preferred communication style: Simple, everyday language.
 ## Core Architectural Decisions
 
 **Bot Architecture**:
-- Modular design using `discord.py` commands.Bot framework.
+- Simplified design using `discord.py` commands.Bot framework.
 - Event-driven architecture utilizing Discord's gateway events (`on_ready`, `on_message`).
 - Asynchronous programming model with Python's `asyncio` for concurrency.
+- Pure Discord bot mode - API server component removed for simplicity.
 
 **Configuration Management**:
 - Centralized system prioritizing environment variables over file-based configuration.
@@ -37,10 +39,10 @@ Preferred communication style: Simple, everyday language.
 - Includes validation for required parameters and sensible defaults.
 
 **Message Processing Pipeline**:
-- Listens for `@mention` events in monitored Discord channels.
+- Listens for `@mention` events and stock commands in monitored Discord channels.
 - Filters bot's own messages to prevent loops.
-- Extracts comprehensive message metadata (author, channel, content, user context with roles/permissions, server info).
-- Transforms Discord message objects into structured webhook-compatible payloads (v2.0 format).
+- Processes three core request types: stock charts, stock analysis, and image analysis.
+- Maintains user request limits and provides admin management capabilities.
 
 **Error Handling Strategy**:
 - Multi-layered approach with retry mechanisms (exponential backoff) for webhook delivery.

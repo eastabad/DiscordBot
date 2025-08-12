@@ -1409,47 +1409,5 @@ class DiscordBot(commands.Bot):
         embed.set_footer(text="注意：清理功能会自动识别并保留有用的股票命令和重要消息")
         await ctx.send(embed=embed)
     
-    async def start_with_api(self, token, **kwargs):
-        """同时启动Discord机器人和API服务器"""
-        from api_server import DiscordAPIServer
-        import asyncio
-        
-        # 提取API服务器参数
-        api_host = kwargs.pop('host', '0.0.0.0')
-        api_port = kwargs.pop('port', 5000)
-        
-        # 创建API服务器
-        api_server = DiscordAPIServer(self)
-        runner = None
-        
-        try:
-            # 启动API服务器
-            self.logger.info(f"正在启动API服务器在 {api_host}:{api_port}...")
-            runner = await api_server.start_server(host=api_host, port=api_port)
-            self.logger.info("✅ API服务器启动成功")
-            
-            # 小延迟确保API服务器完全就绪
-            await asyncio.sleep(0.1)
-            
-            # 启动Discord机器人
-            self.logger.info("正在启动Discord机器人...")
-            
-            # 确保API服务器在运行，然后启动Discord bot
-            # bot.start() 会阻塞并保持整个应用运行
-            await self.start(token, **kwargs)
-            
-        except KeyboardInterrupt:
-            self.logger.info("收到停止信号...")
-        except Exception as e:
-            self.logger.error(f"启动服务时发生错误: {e}")
-            raise
-        finally:
-            # 清理资源
-            if runner:
-                try:
-                    await runner.cleanup()
-                    self.logger.info("API服务器已关闭")
-                except Exception as e:
-                    self.logger.error(f"清理API服务器时出错: {e}")
-            
-            self.logger.info("所有服务已正常关闭")
+    # API服务器功能已移除 - 现在是纯Discord机器人模式
+    # 如需API功能，请使用包含API服务器的完整版本
