@@ -711,6 +711,85 @@ class ChartService:
             'AAPL': 'NASDAQ:AAPL', # Apple Inc. (重复检查)
         }
         
+    async def detect_stock_exchange(self, symbol: str) -> str:
+        """
+        智能检测未知股票符号的交易所
+        使用多种策略自动匹配最可能的交易所
+        """
+        symbol = symbol.upper()
+        
+        # 如果已经包含交易所前缀，直接返回
+        if ':' in symbol:
+            return symbol
+            
+        # 尝试通过Chart-img API测试不同交易所
+        test_exchanges = ['NASDAQ', 'NYSE', 'AMEX', 'OTC']
+        
+        for exchange in test_exchanges:
+            test_symbol = f"{exchange}:{symbol}"
+            try:
+                # 构建测试API URL
+                test_url = f"https://api.chart-img.com/v1/tradingview/advanced-chart"
+                test_params = {
+                    'symbol': test_symbol,
+                    'interval': '1h',
+                    'width': 400,
+                    'height': 300,
+                    'key': self.config.chart_img_api_key
+                }
+                
+                timeout = aiohttp.ClientTimeout(total=10)
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.get(test_url, params=test_params) as response:
+                        if response.status == 200:
+                            content_type = response.headers.get('content-type', '')
+                            if 'image' in content_type:
+                                self.logger.info(f"检测到 {symbol} 属于 {exchange} 交易所")
+                                return test_symbol
+                                
+            except Exception as e:
+                self.logger.debug(f"测试 {test_symbol} 失败: {e}")
+                continue
+        
+        # 如果API测试失败，使用启发式规则
+        nasdaq_patterns = [
+            # 科技公司常见后缀
+            r'.*X$',      # 如 DKNG -> NASDAQ
+            r'.*G$',      # 如 GOOGL -> NASDAQ  
+            r'.*T$',      # 如 MSFT -> NASDAQ
+            # 生物技术/制药
+            r'.*BIO$', r'.*GENE$', r'.*THER$', r'.*PHARM$',
+            # 新兴公司/IPO
+            r'^[A-Z]{3,4}$'  # 3-4字母的简单符号通常在NASDAQ
+        ]
+        
+        nyse_patterns = [
+            # 传统行业
+            r'.*CORP$', r'.*INC$', r'.*LLC$',
+            # 金融服务
+            r'.*BANK$', r'.*FINANCIAL$', r'.*TRUST$',
+            # 能源/材料
+            r'.*OIL$', r'.*GAS$', r'.*ENERGY$', r'.*MATERIALS$',
+            # 单字母股票通常在NYSE
+            r'^[A-Z]$'
+        ]
+        
+        # 检查NASDAQ模式
+        for pattern in nasdaq_patterns:
+            if re.match(pattern, symbol):
+                self.logger.info(f"基于模式匹配，推测 {symbol} 属于 NASDAQ 交易所")
+                return f"NASDAQ:{symbol}"
+        
+        # 检查NYSE模式  
+        for pattern in nyse_patterns:
+            if re.match(pattern, symbol):
+                self.logger.info(f"基于模式匹配，推测 {symbol} 属于 NYSE 交易所")
+                return f"NYSE:{symbol}"
+        
+        # 默认尝试NASDAQ（新股票更可能在NASDAQ）
+        self.logger.info(f"无法确定 {symbol} 交易所，默认尝试 NASDAQ")
+        return f"NASDAQ:{symbol}"
+        
     def parse_command(self, content: str) -> Optional[Tuple[str, str]]:
         """
         解析用户输入的命令
@@ -788,9 +867,9 @@ class ChartService:
                     symbol = self.stock_exchange_map[symbol]
                     self.logger.info(f'使用交易所映射: {symbol}')
                 else:
-                    # 默认添加NASDAQ前缀给未知美股
-                    symbol = f"NASDAQ:{symbol}"
-                    self.logger.info(f'使用默认NASDAQ前缀: {symbol}')
+                    # 使用智能检测功能自动匹配交易所
+                    symbol = await self.detect_stock_exchange(symbol)
+                    self.logger.info(f'智能检测交易所: {symbol}')
             
             # 构建Shared Layout API请求（参数有限）
             payload = {
