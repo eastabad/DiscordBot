@@ -1105,8 +1105,15 @@ class DiscordBot(commands.Bot):
     @commands.command(name='ping')
     async def ping_command(self, ctx: commands.Context):
         """测试命令 - 检查机器人延迟"""
+        self.logger.info(f"ping命令被调用，用户: {ctx.author.name}")
         latency = round(self.latency * 1000)
         await ctx.send(f'🏓 Pong! 延迟: {latency}ms')
+        
+    @commands.command(name='test')
+    async def test_command(self, ctx: commands.Context):
+        """简单测试命令"""
+        self.logger.info(f"test命令被调用，用户: {ctx.author.name}")
+        await ctx.send("✅ 测试命令正常工作！")
         
     @commands.command(name='info')
     async def info_command(self, ctx: commands.Context):
@@ -1224,10 +1231,14 @@ class DiscordBot(commands.Bot):
     @commands.command(name='logs', aliases=['日志', '统计'])
     async def logs_command(self, ctx: commands.Context):
         """查看今日请求日志统计"""
+        self.logger.info(f"logs命令被调用，用户: {ctx.author.name}")
+        
         try:
-            # 简化权限检查 - 允许所有用户查看基本统计
-            # 后续可以根据需要重新加强权限控制
+            # 先发送一个简单的响应测试
+            await ctx.send("🔍 正在获取日志统计...")
+            
             summary = daily_logger.get_today_summary()
+            self.logger.info(f"获取到日志统计: 总请求数 {summary['total_requests']}")
             
             embed = discord.Embed(
                 title="📊 今日请求统计",
@@ -1273,9 +1284,14 @@ class DiscordBot(commands.Bot):
                 embed.add_field(name="最近请求", value=recent_str, inline=False)
             
             await ctx.send(embed=embed)
+            self.logger.info("logs命令执行完成")
             
         except Exception as e:
-            await ctx.send(f"❌ 获取日志统计失败: {str(e)}")
+            self.logger.error(f"logs命令执行失败: {e}", exc_info=True)
+            try:
+                await ctx.send(f"❌ 获取日志统计失败: {str(e)}")
+            except:
+                self.logger.error("无法发送错误消息")
     
     async def manual_cleanup_command_direct(self, message):
         """直接处理手动清理命令"""
