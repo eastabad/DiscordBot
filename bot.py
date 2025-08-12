@@ -81,15 +81,15 @@ class DiscordBot(commands.Bot):
             
         # 检查是否被@提及（检查机器人角色是否被提及）
         bot_role_mentioned = False
-        if message.guild:
+        if message.guild and self.user:
             bot_member = message.guild.get_member(self.user.id)
             if bot_member:
                 bot_role_mentioned = any(role in message.role_mentions for role in bot_member.roles)
         
-        is_mentioned = (self.user in message.mentions or 
+        is_mentioned = (self.user and (self.user in message.mentions or 
                        bot_role_mentioned or
                        f'<@{self.user.id}>' in message.content or
-                       f'<@!{self.user.id}>' in message.content)
+                       f'<@!{self.user.id}>' in message.content))
         
         # 检查是否在监控频道中
         is_monitored_channel = (
@@ -858,7 +858,7 @@ class DiscordBot(commands.Bot):
                 }
             
             # 获取权限信息（针对文字频道）
-            if hasattr(channel, 'guild') and channel.guild:
+            if hasattr(channel, 'guild') and channel.guild and self.user:
                 try:
                     # 获取机器人在该频道的权限
                     bot_member = channel.guild.get_member(self.user.id)
@@ -883,9 +883,9 @@ class DiscordBot(commands.Bot):
                 channel_info['members'] = [
                     {
                         'id': member.id,
-                        'name': member.name,
-                        'display_name': member.display_name
-                    } for member in channel.members[:10]  # 限制最多10个成员信息
+                        'name': member.name if member else None,
+                        'display_name': member.display_name if member else None
+                    } for member in channel.members[:10] if member  # 限制最多10个成员信息
                 ]
             
             return channel_info
@@ -1034,13 +1034,13 @@ class DiscordBot(commands.Bot):
             pass
             
     @commands.command(name='ping')
-    async def ping_command(self, ctx):
+    async def ping_command(self, ctx: commands.Context):
         """测试命令 - 检查机器人延迟"""
         latency = round(self.latency * 1000)
         await ctx.send(f'🏓 Pong! 延迟: {latency}ms')
         
     @commands.command(name='info')
-    async def info_command(self, ctx):
+    async def info_command(self, ctx: commands.Context):
         """显示机器人信息"""
         embed = discord.Embed(
             title="机器人信息",
@@ -1052,7 +1052,7 @@ class DiscordBot(commands.Bot):
         await ctx.send(embed=embed)
         
     @commands.command(name='quota', aliases=['限制', '配额'])
-    async def quota_command(self, ctx):
+    async def quota_command(self, ctx: commands.Context):
         """查看用户每日请求配额"""
         user_id = str(ctx.author.id)
         username = ctx.author.display_name or ctx.author.name
@@ -1095,7 +1095,7 @@ class DiscordBot(commands.Bot):
     
     @commands.command(name='exempt_add')
     @commands.has_permissions(administrator=True)
-    async def add_exempt_user(self, ctx, user_id: str, *, reason: str = "管理员豁免"):
+    async def add_exempt_user(self, ctx: commands.Context, user_id: str, *, reason: str = "管理员豁免"):
         """添加豁免用户（仅管理员）"""
         try:
             # 尝试获取用户信息
@@ -1115,7 +1115,7 @@ class DiscordBot(commands.Bot):
     
     @commands.command(name='exempt_remove')
     @commands.has_permissions(administrator=True)
-    async def remove_exempt_user(self, ctx, user_id: str):
+    async def remove_exempt_user(self, ctx: commands.Context, user_id: str):
         """移除豁免用户（仅管理员）"""
         success = self.rate_limiter.remove_exempt_user(user_id)
         
@@ -1126,7 +1126,7 @@ class DiscordBot(commands.Bot):
     
     @commands.command(name='exempt_list')
     @commands.has_permissions(administrator=True)
-    async def list_exempt_users(self, ctx):
+    async def list_exempt_users(self, ctx: commands.Context):
         """查看所有豁免用户（仅管理员）"""
         exempt_users = self.rate_limiter.list_exempt_users()
         
@@ -1171,7 +1171,7 @@ class DiscordBot(commands.Bot):
             await message.channel.send(f"❌ 清理失败: {str(e)}")
 
     @commands.command(name='cleanup_now')
-    async def manual_cleanup_command(self, ctx, days: int = 1):
+    async def manual_cleanup_command(self, ctx: commands.Context, days: int = 1):
         """手动清理频道无用消息（仅管理员）"""
         # 检查管理员权限
         admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
@@ -1282,7 +1282,7 @@ class DiscordBot(commands.Bot):
             await message.channel.send(f"❌ 获取状态失败: {str(e)}")
 
     @commands.command(name='cleanup_channel')
-    async def cleanup_specific_channel(self, ctx, channel_id: str, days: int = 1):
+    async def cleanup_specific_channel(self, ctx: commands.Context, channel_id: str, days: int = 1):
         """清理指定频道的无用消息（仅管理员）"""
         # 检查管理员权限
         admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
@@ -1300,10 +1300,11 @@ class DiscordBot(commands.Bot):
                 await ctx.send(f"❌ 找不到频道 ID: {channel_id}")
                 return
                 
-            await ctx.send(f"🧹 开始清理频道 #{channel.name} 最近{days}天的无用消息...")
+            channel_name = getattr(channel, 'name', f'Channel_{channel_id}')
+            await ctx.send(f"🧹 开始清理频道 #{channel_name} 最近{days}天的无用消息...")
             
             deleted_count = await self.channel_cleaner.manual_cleanup(channel_id=channel_id, days=days)
-            await ctx.send(f"✅ 清理完成！在频道 #{channel.name} 中删除了 {deleted_count} 条无用消息")
+            await ctx.send(f"✅ 清理完成！在频道 #{channel_name} 中删除了 {deleted_count} 条无用消息")
         except ValueError:
             await ctx.send("❌ 无效的频道ID")
         except Exception as e:
@@ -1311,7 +1312,7 @@ class DiscordBot(commands.Bot):
             await ctx.send(f"❌ 清理失败: {str(e)}")
     
     @commands.command(name='cleanup_status')
-    async def cleanup_status_command(self, ctx):
+    async def cleanup_status_command(self, ctx: commands.Context):
         """查看频道清理服务状态（仅管理员）"""
         # 检查管理员权限
         admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
@@ -1358,7 +1359,7 @@ class DiscordBot(commands.Bot):
             await ctx.send(f"❌ 获取状态失败: {str(e)}")
     
     @commands.command(name='help_admin')
-    async def help_admin_command(self, ctx):
+    async def help_admin_command(self, ctx: commands.Context):
         """显示管理员命令帮助"""
         # 检查管理员权限
         admin_users = ["1145170623354638418", "1260376806845001778", "1260376806845001779"]  # easton, easmartalgo, TestAdmin
@@ -1419,6 +1420,7 @@ class DiscordBot(commands.Bot):
         
         # 创建API服务器
         api_server = DiscordAPIServer(self)
+        runner = None
         
         try:
             # 启动API服务器
@@ -1434,5 +1436,8 @@ class DiscordBot(commands.Bot):
             raise
         finally:
             # 清理资源
-            if 'runner' in locals() and runner:
-                await runner.cleanup()
+            if runner:
+                try:
+                    await runner.cleanup()
+                except Exception:
+                    pass
