@@ -108,5 +108,16 @@
     "error": null,
     "channel": "img",
     "guild": "TradingView Alerts"
+  },
+  {
+    "timestamp": "2025-08-12T13:04:37.095271",
+    "user_id": "1145170623354638418",
+    "username": "easton",
+    "request_type": "chart",
+    "content": "AAPL 1h",
+    "success": true,
+    "error": null,
+    "channel": "img",
+    "guild": "TradingView Alerts"
   }
 ]
