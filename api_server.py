@@ -92,6 +92,16 @@ class DiscordAPIServer:
     async def health_check(self, request):
         """健康检查端点 - 专为部署设计，快速响应"""
         try:
+            # 立即返回200状态，确保部署健康检查通过
+            response_data = {
+                'status': 'healthy',
+                'service': 'discord-bot-api',
+                'api_server': 'running',
+                'port': 5000,
+                'timestamp': datetime.utcnow().isoformat(),
+                'uptime': 'running'
+            }
+            
             # 检查Discord机器人详细状态
             bot_info = {
                 'status': 'unknown',
@@ -122,6 +132,8 @@ class DiscordAPIServer:
             except Exception as bot_error:
                 bot_info['status'] = 'error'
                 bot_info['error'] = str(bot_error)
+                
+            response_data['bot'] = bot_info
             
             # 总是返回200状态，确保部署健康检查通过
             health_data = {
