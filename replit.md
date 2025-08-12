@@ -4,6 +4,16 @@ This project is a simplified Python-based Discord bot designed to handle three c
 
 ## Recent Changes (August 12, 2025)
 
+✅ **Docker数据库连接问题完全修复** - 用户限制功能在VPS环境完全正常工作
+- 修复 `models.py` 数据库连接池配置，添加 pool_pre_ping 和连接超时
+- 增强 `rate_limiter.py` 错误处理，数据库失败时安全拒绝请求
+- 集成 `bot.py` 启动时数据库初始化和功能验证
+- 创建完整的测试和验证脚本：`test-user-limits.py`, `verify-user-limits.sh`
+- 更新状态检查脚本 `check-status.sh` 正确显示Docker环境配置
+- 确认Docker容器中PostgreSQL数据库表正确创建和功能验证通过
+
+## Recent Changes (August 12, 2025)
+
 ✅ **VPS自动更新系统** - 一键代码部署到VPS生产环境
 - 创建 `update-vps.sh` 自动化VPS代码更新脚本
 - 开发 `quick-deploy.sh` 本地到VPS完整部署流程

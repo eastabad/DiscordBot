@@ -1,0 +1,44 @@
+
+🔧 检查环境变量...
+✅ .env文件存在
+❌ DATABASE_URL未在.env中配置
+
+🌐 检查应用健康状态...
+✅ 应用健康检查通过
+{
+  "status": "healthy",
+  "timestamp": "2025-08-12T15:07:01.958345",
+  "bot_running": true,
+  "started_at": "2025-08-12T15:06:36.924619"
+}
+
+📊 检查数据库表...
+                List of relations
+ Schema |        Name         | Type  |  Owner   
+--------+---------------------+-------+----------
+ public | exempt_users        | table | postgres
+ public | user_request_limits | table | postgres
+(2 rows)
+
+
+📝 显示最近日志...
+Discord机器人日志:
+WARN[0000] /root/DiscordBot/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+discord-bot  | 2025-08-12 15:06:39,420 - bot - INFO - 机器人已登录: TDbot-tradingview (ID: 1404173510074564709)
+discord-bot  | 2025-08-12 15:06:39,420 - bot - INFO - 机器人在 4 个服务器中
+discord-bot  | 2025-08-12 15:06:39,420 - bot - INFO - 机器人意图: message_content=True, messages=True, guild_messages=True
+discord-bot  | 数据库表创建完成
+discord-bot  | 2025-08-12 15:06:39,458 - bot - INFO - ✅ 数据库表初始化完成
+discord-bot  | 2025-08-12 15:06:39,458 - bot - INFO - ✅ 用户限制功能验证完成
+discord-bot  | 2025-08-12 15:06:39,458 - bot - INFO - 监控频道IDs: 1404532905916760125, 1404064475614548018
+discord-bot  | 2025-08-12 15:06:39,458 - channel_cleaner - INFO - 每日频道清理任务已启动
+discord-bot  | 2025-08-12 15:06:39,458 - bot - INFO - 频道清理服务已启动
+discord-bot  | 2025-08-12 15:06:39,459 - channel_cleaner - INFO - 下次清理时间: 2025-08-13 02:00:00, 等待 10.9 小时
+
+数据库日志:
+WARN[0000] /root/DiscordBot/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+discord-bot-db  | 2025-08-12 15:06:30.474 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+discord-bot-db  | 2025-08-12 15:06:30.476 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+discord-bot-db  | 2025-08-12 15:06:30.480 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+discord-bot-db  | 2025-08-12 15:06:30.489 UTC [27] LOG:  database system was shut down at 2025-08-12 15:04:19 UTC
+discord-bot-db  | 2025-08-12 15:06:30.513 UTC [1] LOG:  database system is ready to accept connections

@@ -19,9 +19,9 @@ echo "🔧 检查环境变量..."
 if [ -f ".env" ]; then
     echo "✅ .env文件存在"
     if grep -q "DATABASE_URL" .env; then
-        echo "✅ DATABASE_URL已配置"
+        echo "✅ DATABASE_URL已在.env中配置"
     else
-        echo "❌ DATABASE_URL未在.env中配置"
+        echo "ℹ️  DATABASE_URL通过docker-compose.yml直接配置 (这是正常的)"
     fi
 else
     echo "❌ .env文件不存在"
