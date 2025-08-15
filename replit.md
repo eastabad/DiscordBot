@@ -1,6 +1,6 @@
 # Overview
 
-This project is an advanced Python-based Discord bot with integrated API server capabilities, designed to provide high-quality trading insights. It handles four core user requests: stock chart generation, stock analysis, image analysis, and AI-powered report generation. The system ensures user request limits and automated channel cleanup, while also supporting enhanced data storage for various TradingView signal types (signal, trade, close). It includes a robust report channel monitoring system for AI analysis and offers comprehensive AI-driven report generation with detailed technical indicator解析 and investment recommendations. The project aims for fully autonomous operation with a robust deployment solution and dedicated logging systems.
+This project is an advanced Python-based Discord bot with integrated API server capabilities, designed to provide high-quality trading insights. It handles four core user requests: stock chart generation, stock analysis, image analysis, and AI-powered report generation. The system ensures user request limits and automated channel cleanup, while also supporting enhanced data storage for various TradingView signal types (signal, trade, close). It features a comprehensive database-driven report generation system that queries stored historical data rather than relying on real-time webhook inputs. The project includes robust report channel monitoring for AI analysis and offers comprehensive AI-driven report generation with detailed technical indicator analysis, investment recommendations, and integrated trading insights. The system aims for fully autonomous operation with robust deployment solutions and dedicated logging systems.
 
 # User Preferences
 
@@ -45,7 +45,9 @@ Preferred communication style: Simple, everyday language.
 **TradingView Webhook Integration**:
 - Receives and parses TradingView webhook data, storing enhanced data types (signal, trade, close) with detailed trading fields.
 - Supports 22+ technical indicator intelligent parsing and multi-timeframe trend analysis.
-- Generates structured AI reports with market overview, key signals, trend analysis, investment advice, and risk warnings.
+- Features database-driven report generation using stored historical data for comprehensive analysis.
+- Generates structured AI reports with market overview, key signals, trend analysis, investment advice, risk warnings, and integrated trading insights including stop loss, take profit, and risk ratings.
+- Implements intelligent data type detection for proper categorization of signals, trades, and position closures.
 
 **User & Admin Management**:
 - Implements a daily request limit (3 requests per user per day) using PostgreSQL.
@@ -87,10 +89,10 @@ Preferred communication style: Simple, everyday language.
 - **Chart-img API**: Used for testing symbol availability across exchanges.
 - **AI Trend Band Signal Recognition Service**: For chart analysis.
 - **Stock Trend Prediction Service**: For market predictions.
-- **Google Gemini-2.5-pro**: For AI analysis report generation.
+- **Google Gemini-2.5-pro**: For AI analysis report generation with enhanced database-driven prompts.
 
 ## Database
-- **PostgreSQL**: Used for user tracking, daily request limits, VIP/exemption management, and enhanced TradingView data storage.
+- **PostgreSQL**: Used for user tracking, daily request limits, VIP/exemption management, and enhanced TradingView data storage with intelligent data type categorization. Features database-driven report generation querying the latest signal and trade data for comprehensive analysis.
 
 ## Runtime Environment
 - **Python 3.7+**.

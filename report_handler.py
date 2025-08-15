@@ -134,12 +134,9 @@ class ReportHandler:
                 f"📊 正在生成 {symbol} ({timeframe}) 的AI分析报告..."
             )
             
-            # 生成报告
+            # 生成报告 - 使用增强版数据库驱动方式
             try:
-                report = self.gemini_generator.generate_stock_report(
-                    latest_data, 
-                    message.content
-                )
+                report = self.gemini_generator.generate_enhanced_report(symbol, timeframe)
                 
                 # 更新用户请求计数
                 self.rate_limiter.record_request(user_id, username)

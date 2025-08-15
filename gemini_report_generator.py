@@ -484,6 +484,197 @@ class GeminiReportGenerator:
         
         return signals
     
+    def generate_enhanced_report(self, symbol: str, timeframe: str) -> str:
+        """生成增强版报告 - 使用数据库中的最新数据"""
+        try:
+            # 从数据库获取最新的signal数据和trade/close数据
+            signal_data = self._get_latest_signal_data(symbol, timeframe)
+            trade_data = self._get_latest_trade_data(symbol)
+            
+            if not signal_data:
+                return f"❌ 未找到 {symbol} 的最新信号数据，无法生成报告"
+            
+            # 从数据库解析信号
+            signals = self._parse_signals_from_database(signal_data)
+            
+            # 提取趋势改变止损点
+            trend_stop = self._extract_trend_stop_from_data(signal_data)
+            
+            # 构建报告提示词
+            prompt = self._build_enhanced_report_prompt(symbol, signals, trend_stop, trade_data)
+            
+            self.logger.info(f"开始生成{symbol}增强版分析报告...")
+            
+            response = self.client.models.generate_content(
+                model="gemini-2.5-pro",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    max_output_tokens=4096
+                )
+            )
+            
+            if response and hasattr(response, 'text') and response.text:
+                self.logger.info(f"✅ 成功生成{symbol}增强版分析报告，长度: {len(response.text)}")
+                return response.text
+            elif response and hasattr(response, 'candidates') and response.candidates:
+                for candidate in response.candidates:
+                    if hasattr(candidate, 'content') and candidate.content:
+                        content = candidate.content
+                        if hasattr(content, 'parts') and content.parts:
+                            for part in content.parts:
+                                if hasattr(part, 'text') and part.text:
+                                    self.logger.info(f"✅ 从candidates提取增强版报告，长度: {len(part.text)}")
+                                    return part.text
+                
+                self.logger.error("Gemini API candidates中未找到有效文本")
+                return f"❌ 报告生成失败：AI服务未返回有效内容"
+            else:
+                self.logger.error("Gemini返回空响应")
+                return f"❌ 报告生成失败：AI服务返回空响应"
+                
+        except Exception as e:
+            self.logger.error(f"生成增强版分析报告失败: {e}")
+            return f"❌ 报告生成失败：{str(e)}"
+    
+    def _get_latest_signal_data(self, symbol: str, timeframe: str):
+        """获取最新的signal数据"""
+        try:
+            from models import get_db_session, TradingViewData
+            session = get_db_session()
+            
+            latest_signal = session.query(TradingViewData).filter(
+                TradingViewData.symbol == symbol.upper(),
+                TradingViewData.timeframe == timeframe,
+                TradingViewData.data_type == 'signal'
+            ).order_by(TradingViewData.received_at.desc()).first()
+            
+            session.close()
+            return latest_signal
+            
+        except Exception as e:
+            self.logger.error(f"获取signal数据失败: {e}")
+            return None
+    
+    def _get_latest_trade_data(self, symbol: str):
+        """获取最新的trade或close数据"""
+        try:
+            from models import get_db_session, TradingViewData
+            session = get_db_session()
+            
+            latest_trade = session.query(TradingViewData).filter(
+                TradingViewData.symbol == symbol.upper(),
+                TradingViewData.data_type.in_(['trade', 'close']),
+                TradingViewData.action.isnot(None)
+            ).order_by(TradingViewData.received_at.desc()).first()
+            
+            session.close()
+            return latest_trade
+            
+        except Exception as e:
+            self.logger.error(f"获取trade数据失败: {e}")
+            return None
+    
+    def _parse_signals_from_database(self, signal_data):
+        """从数据库记录中解析信号"""
+        try:
+            import json
+            raw_data = json.loads(signal_data.raw_data)
+            
+            # 重用现有的信号解析逻辑
+            return self._extract_signals_from_data(raw_data)
+            
+        except Exception as e:
+            self.logger.error(f"解析信号数据失败: {e}")
+            return ["信号解析失败"]
+    
+    def _extract_trend_stop_from_data(self, signal_data):
+        """提取趋势改变止损点"""
+        try:
+            import json
+            raw_data = json.loads(signal_data.raw_data)
+            return raw_data.get('trend_change_volatility_stop', 'N/A')
+        except:
+            return 'N/A'
+    
+    def _build_enhanced_report_prompt(self, symbol: str, signals: list, trend_stop: str, trade_data):
+        """构建增强版报告生成提示词"""
+        
+        # 基础报告模板
+        base_prompt = f"""
+生成一份针对 {symbol} 的中文交易报告，格式为 Markdown，包含以下部分：
+
+## 📈 市场概况
+简要说明市场整体状态和当前交易环境。
+
+## 🔑 关键交易信号
+逐条列出以下原始信号，不做删改：
+{chr(10).join(f'• {signal}' for signal in signals)}
+
+## 📉 趋势分析
+1. **趋势总结**：基于 3 个级别的 MA 趋势、TrendTracer 两个级别，以及 AI 智能趋势带，总结市场的总体趋势方向。
+2. **当前波动分析**：结合 Heikin Ashi RSI 看涨、动量指标、中心趋势、WaveMatrix 状态、艾略特波浪趋势、RSI，进行分析总结当前波动特征进行分析。
+3. **Squeeze 与 Chopping 分析**：判断市场是否处于横盘挤压或震荡区间，并结合 PMA 与 ADX 状态，分析总结趋势强弱。
+4. **买卖压力分析**：基于 CVD 的状态评估资金流向及买卖力量对比。给出分析总结
+
+## 💡 投资建议
+给出基于上述分析的交易建议，并结合趋势改变点：
+- 趋势改变止损点：{trend_stop}
+
+## ⚠️ 风险提示
+提醒潜在风险因素。
+"""
+        
+        # 如果有交易数据，添加交易解读部分
+        if trade_data:
+            trade_section = self._build_trade_section(trade_data)
+            base_prompt += f"\n{trade_section}"
+        
+        return base_prompt
+    
+    def _build_trade_section(self, trade_data):
+        """构建交易解读部分"""
+        try:
+            action_desc = {
+                'buy': '做多',
+                'sell': '做空'
+            }
+            
+            data_type_desc = {
+                'trade': '开仓交易',
+                'close': '平仓操作'
+            }
+            
+            action_text = action_desc.get(trade_data.action, trade_data.action)
+            type_text = data_type_desc.get(trade_data.data_type, '交易')
+            
+            section = f"""
+## 📊TDindicator Bot 交易解读：
+**交易类型：{type_text}**
+**交易方向：{action_text}**"""
+            
+            if trade_data.data_type == 'trade':
+                # 完整交易信息
+                section += f"""
+- **止损：{trade_data.stop_loss_price or 'N/A'}**
+- **止盈：{trade_data.take_profit_price or 'N/A'}**
+结合风险等级{trade_data.risk_level or 'N/A'}、OscRating{trade_data.osc_rating or 'N/A'}与 TrendRating{trade_data.trend_rating or 'N/A'}；
+说明：这是bot交易的最后一笔，结合总体趋势对该交易做出简短的分析和评价。"""
+            
+            elif trade_data.data_type == 'close':
+                # 平仓信息
+                close_type = "平仓多头" if trade_data.action == 'sell' else "平仓空头"
+                section += f"""
+- **平仓类型：{close_type}**
+- **触发指标：{trade_data.trigger_indicator or 'N/A'}**
+说明：这是bot的最新平仓操作，基于{trade_data.trigger_indicator}指标触发，结合当前趋势分析该平仓决策的合理性。"""
+            
+            return section
+            
+        except Exception as e:
+            self.logger.error(f"构建交易部分失败: {e}")
+            return "\n## 📊TDindicator Bot 交易解读：\n交易数据解析失败"
+    
     def _format_report(self, report_text: str, trading_data: TradingViewData) -> str:
         """按照Discord格式要求格式化报告输出"""
         try:
