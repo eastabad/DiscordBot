@@ -4,6 +4,16 @@ This project is an advanced Python-based Discord bot with TradingView webhook in
 
 ## Recent Changes (August 15, 2025)
 
+✅ **频道行为区分系统完成** - REPORT频道和MONITOR频道功能分离
+- 修复 `report_handler.py` 中的rate limiter方法名错误
+- 实现频道类型优先级逻辑：REPORT频道优先处理AI报告
+- 配置环境变量支持：`REPORT_CHANNEL_ID=1406017230126448671`
+- 完善Discord格式化系统，支持JavaScript逻辑转换到Python
+- 新增美东时间处理、Markdown结构化解析、关键价格高亮
+- 安装pytz时区处理库，实现标题日期自动更新
+- 创建测试数据验证系统功能正常
+- 频道行为文档：`channel_behavior_guide.md`, `test_channel_behavior.md`
+
 ✅ **Report频道监控和AI分析报告系统** - 完整的用户交互和智能分析
 - 实现专门的report频道监控功能，自动检测所有名为"report"的频道
 - 配置智能频道检测：支持频道ID指定或名称模式匹配
