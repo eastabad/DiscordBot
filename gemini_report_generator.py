@@ -48,11 +48,27 @@ class GeminiReportGenerator:
                 )
             )
             
-            if response.text:
-                self.logger.info(f"✅ 成功生成{trading_data.symbol}分析报告")
+            # 调试：打印完整响应
+            self.logger.info(f"Gemini API完整响应: {response}")
+            
+            if response and hasattr(response, 'text') and response.text:
+                self.logger.info(f"✅ 成功生成{trading_data.symbol}分析报告，长度: {len(response.text)}")
                 return self._format_report(response.text, trading_data)
+            elif response and hasattr(response, 'candidates') and response.candidates:
+                # 尝试从candidates中提取文本
+                for candidate in response.candidates:
+                    if hasattr(candidate, 'content') and candidate.content:
+                        content = candidate.content
+                        if hasattr(content, 'parts') and content.parts:
+                            for part in content.parts:
+                                if hasattr(part, 'text') and part.text:
+                                    self.logger.info(f"✅ 从candidates提取报告，长度: {len(part.text)}")
+                                    return self._format_report(part.text, trading_data)
+                
+                self.logger.error("Gemini API candidates中未找到有效文本")
+                return self._generate_fallback_report(trading_data, raw_data)
             else:
-                self.logger.error("Gemini API返回空响应")
+                self.logger.error("Gemini API返回空响应或格式异常")
                 return self._generate_fallback_report(trading_data, raw_data)
                 
         except Exception as e:
