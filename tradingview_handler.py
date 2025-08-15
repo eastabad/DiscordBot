@@ -51,11 +51,15 @@ class TradingViewHandler:
             else:
                 primary_timeframe = f"{tf1_int}m"  # 其他情况用分钟
             
+            # 解析详细的交易信号
+            signals = self._parse_detailed_signals(body, timeframe_1, timeframe_2, primary_timeframe)
+            
             # 提取技术指标数据
             parsed_data = {
                 'symbol': symbol.upper(),
                 'timeframe': primary_timeframe,
                 'timestamp': datetime.now(),
+                'signals': signals,  # 新增详细信号解析
                 
                 # 技术指标
                 'cvd_signal': body.get('CVDsignal', ''),
@@ -81,6 +85,15 @@ class TradingViewHandler:
                 'wave_market_state': body.get('wavemarket_state', ''),
                 'ewo_trend_state': body.get('ewotrend_state', ''),
                 
+                # 止损止盈相关
+                'stop_loss': body.get('stopLoss', {}),
+                'take_profit': body.get('takeProfit', {}),
+                'risk': body.get('risk', ''),
+                'action': body.get('action', ''),
+                
+                # 额外评级信息
+                'extras': body.get('extras', {}),
+                
                 # 原始数据
                 'raw_data': json.dumps(body, ensure_ascii=False)
             }
@@ -100,6 +113,248 @@ class TradingViewHandler:
             return float(value)
         except (ValueError, TypeError):
             return None
+    
+    def _safe_str(self, value: Any) -> str:
+        """安全转换为字符串"""
+        if value is None:
+            return ''
+        return str(value)
+    
+    def _parse_detailed_signals(self, data: Dict[str, Any], timeframe_1: str, timeframe_2: str, current_timeframe: str) -> list:
+        """解析详细的交易信号"""
+        signals = []
+        
+        # 安全获取数值
+        choppiness = self._safe_float(data.get('choppiness'))
+        adxValue = self._safe_float(data.get('adxValue'))
+        MAtrend = self._safe_float(data.get('MAtrend'))
+        MAtrend1 = self._safe_float(data.get('MAtrend_timeframe1'))
+        MAtrend2 = self._safe_float(data.get('MAtrend_timeframe2'))
+        TrendTracersignal = self._safe_float(data.get('TrendTracersignal'))
+        TrendTracerHTF = self._safe_float(data.get('TrendTracerHTF'))
+        trendStop = self._safe_float(data.get('trend_change_volatility_stop'))
+        oscrating = self._safe_float(data.get('extras', {}).get('oscrating'))
+        trendrating = self._safe_float(data.get('extras', {}).get('trendrating'))
+        
+        # PMA 信号
+        pma_text = self._safe_str(data.get('pmaText'))
+        pma_mapping = {
+            'PMA Strong Bullish': 'PMA 强烈看涨',
+            'PMA Bullish': 'PMA 看涨',
+            'PMA Trendless': 'PMA 无明确趋势',
+            'PMA Strong Bearish': 'PMA 强烈看跌',
+            'PMA Bearish': 'PMA 看跌'
+        }
+        signals.append(pma_mapping.get(pma_text, 'PMA 状态未知'))
+        
+        # CVD 信号
+        cvd_signal = self._safe_str(data.get('CVDsignal'))
+        cvd_mapping = {
+            'cvdAboveMA': 'CVD 高于移动平均线 (买压增加，资金流入)',
+            'cvdBelowMA': 'CVD 低于移动平均线 (卖压增加，资金流出)'
+        }
+        signals.append(cvd_mapping.get(cvd_signal, 'CVD 状态未知'))
+        
+        # RSIHAsignal 信号
+        rsi_ha_signal = self._safe_str(data.get('RSIHAsignal'))
+        rsi_ha_mapping = {
+            'BullishHA': 'Heikin Ashi RSI 看涨',
+            'BearishHA': 'Heikin Ashi RSI 看跌'
+        }
+        signals.append(rsi_ha_mapping.get(rsi_ha_signal, 'Heikin Ashi RSI 状态未知'))
+        
+        # BBPsignal 信号
+        bbp_signal = self._safe_str(data.get('BBPsignal'))
+        bbp_mapping = {
+            'bullpower': '多头主导控场',
+            'bearpower': '空头主导控场'
+        }
+        signals.append(bbp_mapping.get(bbp_signal, '市场控场状态未知'))
+        
+        # Choppiness 信号
+        if choppiness is not None:
+            if choppiness < 38.2:
+                signals.append('市场处于趋势状态')
+            elif choppiness <= 61.8:
+                signals.append('市场处于过渡状态')
+            else:
+                signals.append('市场处于震荡状态')
+        else:
+            signals.append('Choppiness: 数据无效')
+        
+        # ADX 信号
+        if adxValue is not None:
+            if adxValue < 20:
+                signals.append('ADX 无趋势或弱趋势')
+            elif adxValue < 25:
+                signals.append('ADX 趋势开始形成')
+            elif adxValue < 50:
+                signals.append('ADX 强趋势')
+            elif adxValue < 75:
+                signals.append('ADX 非常强趋势')
+            else:
+                signals.append('ADX 极强趋势')
+        else:
+            signals.append('ADX: 数据无效')
+        
+        # RSI 信号
+        rsi_state = self._safe_str(data.get('rsi_state_trend'))
+        rsi_mapping = {
+            'Bullish': 'RSI 看涨',
+            'Bearish': 'RSI 看跌',
+            'Neutral': 'RSI 中性'
+        }
+        signals.append(rsi_mapping.get(rsi_state, 'RSI 趋势: 状态未知'))
+        
+        # MA趋势信号
+        ma_trend_mapping = {
+            1: '上涨',
+            0: '短线回调但未跌破 200 周期均线，观望',
+            -1: '下跌'
+        }
+        
+        # 当前时间框架MA趋势
+        if MAtrend is not None:
+            trend_desc = ma_trend_mapping.get(int(MAtrend), '状态未知')
+            signals.append(f"{current_timeframe} 当前MA趋势: {trend_desc}")
+        
+        # 15分钟MA趋势
+        if MAtrend1 is not None:
+            trend_desc = ma_trend_mapping.get(int(MAtrend1), '状态未知')
+            signals.append(f"{timeframe_1} 分钟 MA 趋势: {trend_desc}")
+        
+        # 1小时MA趋势
+        if MAtrend2 is not None:
+            trend_desc = ma_trend_mapping.get(int(MAtrend2), '状态未知')
+            signals.append(f"{timeframe_2} 分钟 MA 趋势: {trend_desc}")
+        
+        # Middle Smooth Trend 信号
+        smooth_trend = self._safe_str(data.get('Middle_smooth_trend'))
+        smooth_mapping = {
+            'Bullish +': '平滑趋势: 强烈看涨',
+            'Bullish': '平滑趋势: 看涨',
+            'Bearish +': '平滑趋势: 强烈看跌',
+            'Bearish': '平滑趋势: 看跌'
+        }
+        signals.append(smooth_mapping.get(smooth_trend, '平滑趋势: 状态未知'))
+        
+        # MOMO信号
+        momo_signal = self._safe_str(data.get('MOMOsignal'))
+        momo_mapping = {
+            'bullishmomo': '动量指标: 看涨',
+            'bearishmomo': '动量指标: 看跌'
+        }
+        signals.append(momo_mapping.get(momo_signal, '动量指标: 状态未知'))
+        
+        # TrendTracer信号
+        if TrendTracersignal is not None:
+            if int(TrendTracersignal) == 1:
+                signals.append(f"{current_timeframe} TrendTracer 趋势: 蓝色上涨趋势")
+            elif int(TrendTracersignal) == -1:
+                signals.append(f"{current_timeframe} TrendTracer 趋势: 粉色下跌趋势")
+            else:
+                signals.append(f"{current_timeframe} TrendTracer 趋势: 状态未知")
+        
+        if TrendTracerHTF is not None:
+            if int(TrendTracerHTF) == 1:
+                signals.append(f"{timeframe_2} 分钟 TrendTracer 趋势: 蓝色上涨趋势")
+            elif int(TrendTracerHTF) == -1:
+                signals.append(f"{timeframe_2} 分钟 TrendTracer 趋势: 粉色下跌趋势")
+            else:
+                signals.append(f"{timeframe_2} 分钟 TrendTracer 趋势: 状态未知")
+        
+        # 趋势改变止损点
+        signals.append(f"趋势改变止损点: {trendStop if trendStop is not None else '未知'}")
+        
+        # AI智能趋势带信号
+        ai_band = self._safe_str(data.get('AIbandsignal'))
+        ai_mapping = {
+            'green uptrend': 'AI 智能趋势带: 上升趋势',
+            'red downtrend': 'AI 智能趋势带: 下降趋势'
+        }
+        signals.append(ai_mapping.get(ai_band, 'AI 智能趋势带: 状态未知'))
+        
+        # Squeeze Momentum 信号
+        sqz_signal = self._safe_str(data.get('SQZsignal'))
+        sqz_mapping = {
+            'squeeze': '市场处于横盘挤压',
+            'no squeeze': '市场不在横盘挤压'
+        }
+        signals.append(sqz_mapping.get(sqz_signal, 'Squeeze Momentum: 状态未知'))
+        
+        # Chopping Range 信号
+        chopping_signal = self._safe_str(data.get('choppingrange_signal'))
+        chopping_mapping = {
+            'chopping': '市场处于震荡区间',
+            'no chopping': '市场处于非震荡区间'
+        }
+        signals.append(chopping_mapping.get(chopping_signal, 'Chopping Range: 状态未知'))
+        
+        # Center Trend 信号
+        center_trend = self._safe_str(data.get('center_trend'))
+        center_mapping = {
+            'Strong Bullish': '中心趋势强烈看涨',
+            'Weak Bullish': '中心趋势弱看涨',
+            'Weak Bearish': '中心趋势弱看跌',
+            'Strong Bearish': '中心趋势强烈看跌'
+        }
+        signals.append(center_mapping.get(center_trend, '中心趋势: 状态未知'))
+        
+        # WaveMatrix 状态信号
+        wave_state = self._safe_str(data.get('wavemarket_state'))
+        wave_mapping = {
+            'Long Strong': 'WaveMatrix 状态: 强烈上涨趋势',
+            'Long Weak': 'WaveMatrix 状态: 弱上涨趋势',
+            'Short Strong': 'WaveMatrix 状态: 强烈下跌趋势',
+            'Short Weak': 'WaveMatrix 状态: 弱下跌趋势',
+            'Neutral': 'WaveMatrix 状态: 中性'
+        }
+        signals.append(wave_mapping.get(wave_state, 'WaveMatrix 状态: 状态未知'))
+        
+        # Elliott Wave Trend 信号
+        ewo_trend = self._safe_str(data.get('ewotrend_state'))
+        ewo_mapping = {
+            'Strong Bullish': '艾略特波浪趋势: 强烈上涨趋势',
+            'Weak Bullish': '艾略特波浪趋势: 弱上涨趋势',
+            'Weak Bearish': '艾略特波浪趋势: 弱下跌趋势',
+            'Strong Bearish': '艾略特波浪趋势: 强烈下跌趋势'
+        }
+        signals.append(ewo_mapping.get(ewo_trend, '艾略特波浪趋势: 状态未知'))
+        
+        # HTFwave_signal 信号
+        htf_wave = self._safe_str(data.get('HTFwave_signal'))
+        htf_mapping = {
+            'Bullish': '高时间框架波浪信号: 看涨',
+            'Bearish': '高时间框架波浪信号: 看跌',
+            'Neutral': '高时间框架波浪信号: 中性'
+        }
+        signals.append(htf_mapping.get(htf_wave, '高时间框架波浪信号: 状态未知'))
+        
+        # OscRating 和 TrendRating 比较
+        if oscrating is not None and trendrating is not None:
+            if oscrating > trendrating:
+                signals.append('趋势初期，结构不稳，波动幅度较高')
+            elif oscrating < trendrating:
+                signals.append('趋势主导，方向性强，波动相对平稳')
+            else:
+                signals.append('趋势状态平衡，波动适中')
+        else:
+            signals.append('趋势评级状态: 未知')
+        
+        # 止损和止盈信号
+        stop_loss = data.get('stopLoss', {})
+        if stop_loss and isinstance(stop_loss.get('stopPrice'), (int, float)):
+            signals.append(f"止损价格: {stop_loss['stopPrice']}")
+        
+        take_profit = data.get('takeProfit', {})
+        if take_profit and isinstance(take_profit.get('limitPrice'), (int, float)):
+            signals.append(f"止盈价格: {take_profit['limitPrice']}")
+        
+        risk = data.get('risk')
+        if risk:
+            signals.append(f"风险等级: {risk}")
+        
+        return signals
     
     def save_to_database(self, parsed_data: Dict[str, Any]) -> bool:
         """保存数据到数据库"""

@@ -1,0 +1,182 @@
+
+// PMA 信号
+switch (safeStr(data.pmaText)) {
+  case 'PMA Strong Bullish': signals.push('PMA 强烈看涨'); break;
+  case 'PMA Bullish': signals.push('PMA 看涨'); break;
+  case 'PMA Trendless': signals.push('PMA 无明确趋势'); break;
+  case 'PMA Strong Bearish': signals.push('PMA 强烈看跌'); break;
+  case 'PMA Bearish': signals.push('PMA 看跌'); break;
+  default: signals.push('PMA 状态未知');
+}
+
+// CVD 信号
+switch (safeStr(data.CVDsignal)) {
+  case 'cvdAboveMA': signals.push('CVD 高于移动平均线 (买压增加，资金流入)'); break;
+  case 'cvdBelowMA': signals.push('CVD 低于移动平均线 (卖压增加，资金流出)'); break;
+  default: signals.push('CVD 状态未知');
+}
+
+// RSIHAsignal 信号
+switch (safeStr(data.RSIHAsignal)) {
+  case 'BullishHA': signals.push('Heikin Ashi RSI 看涨'); break;
+  case 'BearishHA': signals.push('Heikin Ashi RSI 看跌'); break;
+  default: signals.push('Heikin Ashi RSI 状态未知');
+}
+
+// BBPsignal 信号
+switch (safeStr(data.BBPsignal)) {
+  case 'bullpower': signals.push('多头主导控场'); break;
+  case 'bearpower': signals.push('空头主导控场'); break;
+  default: signals.push('市场控场状态未知');
+}
+
+// Choppiness 信号
+if (choppiness !== null) {
+  if (choppiness < 38.2) signals.push('市场处于趋势状态');
+  else if (choppiness <= 61.8) signals.push('市场处于过渡状态');
+  else signals.push('市场处于震荡状态');
+} else {
+  signals.push('Choppiness: 数据无效');
+}
+
+// ADX 信号
+if (adxValue !== null) {
+  if (adxValue < 20) signals.push('ADX 无趋势或弱趋势');
+  else if (adxValue < 25) signals.push('ADX 趋势开始形成');
+  else if (adxValue < 50) signals.push('ADX 强趋势');
+  else if (adxValue < 75) signals.push('ADX 非常强趋势');
+  else signals.push('ADX 极强趋势');
+} else {
+  signals.push('ADX: 数据无效');
+}
+
+// RSI 信号
+switch (safeStr(data.rsi_state_trend)) {
+  case 'Bullish': signals.push('RSI 看涨'); break;
+  case 'Bearish': signals.push('RSI 看跌'); break;
+  case 'Neutral': signals.push('RSI 中性'); break;
+  default: signals.push('RSI 趋势: 状态未知');
+}
+
+// MAtrend 信号（当前时间框架）
+switch (MAtrend) {
+  case 1: signals.push(`${currentTimeframe} 分钟当前MA趋势: 上涨`); break;
+  case 0: signals.push(`${currentTimeframe} 分钟当前MA趋势: 短线回调但未跌破 200 周期均线，观望`); break;
+  case -1: signals.push(`${currentTimeframe} 分钟当前趋势: 下跌`); break;
+  default: signals.push(`${currentTimeframe} 分钟当前趋势: 状态未知`);
+}
+
+// MAtrend_timeframe1 信号（15 分钟）
+switch (MAtrend1) {
+  case 1: signals.push(`${safeStr(data.adaptive_timeframe_1) || '15'} 分钟 MA 趋势: 上涨`); break;
+  case 0: signals.push(`${safeStr(data.adaptive_timeframe_1) || '15'} 分钟 MA 趋势: 短线回调但未跌破 200 周期均线，观望`); break;
+  case -1: signals.push(`${safeStr(data.adaptive_timeframe_1) || '15'} 分钟 MA 趋势: 下跌`); break;
+  default: signals.push(`${safeStr(data.adaptive_timeframe_1) || '15'} 分钟 MA 趋势: 状态未知`);
+}
+
+// MAtrend_timeframe2 信号（1 小时）
+switch (MAtrend2) {
+  case 1: signals.push(`${safeStr(data.adaptive_timeframe_2) || '60'} 分钟 MA 趋势: 上涨`); break;
+  case 0: signals.push(`${safeStr(data.adaptive_timeframe_2) || '60'} 分钟 MA 趋势: 短线回调但未跌破 200 周期均线，观望`); break;
+  case -1: signals.push(`${safeStr(data.adaptive_timeframe_2) || '60'} 分钟 MA 趋势: 下跌`); break;
+  default: signals.push(`${safeStr(data.adaptive_timeframe_2) || '60'} 分钟 MA 趋势: 状态未知`);
+}
+
+// Middle Smooth Trend 信号
+switch (safeStr(data.Middle_smooth_trend)) {
+  case 'Bullish +': signals.push('平滑趋势: 强烈看涨'); break;
+  case 'Bullish': signals.push('平滑趋势: 看涨'); break;
+  case 'Bearish +': signals.push('平滑趋势: 强烈看跌'); break;
+  case 'Bearish': signals.push('平滑趋势: 看跌'); break;
+  default: signals.push('平滑趋势: 状态未知');
+}
+
+// MOMOsignal 信号
+switch (safeStr(data.MOMOsignal)) {
+  case 'bullishmomo': signals.push('动量指标: 看涨'); break;
+  case 'bearishmomo': signals.push('动量指标: 看跌'); break;
+  default: signals.push('动量指标: 状态未知');
+}
+
+// TrendTracersignal 信号
+switch (TrendTracersignal) {
+  case 1: signals.push(`${currentTimeframe} 分钟 TrendTracer 趋势: 蓝色上涨趋势`); break;
+  case -1: signals.push(`${currentTimeframe} 分钟 TrendTracer 趋势: 粉色下跌趋势`); break;
+  default: signals.push(`${currentTimeframe} 分钟 TrendTracer 趋势: 状态未知`);
+}
+
+// TrendTracerHTF 信号
+switch (TrendTracerHTF) {
+  case 1: signals.push(`${safeStr(data.adaptive_timeframe_2) || '60'} 分钟 TrendTracer 趋势: 蓝色上涨趋势`); break;
+  case -1: signals.push(`${safeStr(data.adaptive_timeframe_2) || '60'} 分钟 TrendTracer 趋势: 粉色下跌趋势`); break;
+  default: signals.push(`${safeStr(data.adaptive_timeframe_2) || '60'} 分钟 TrendTracer 趋势: 状态未知`);
+}
+
+// trend_change_volatility_stop 信号
+signals.push(`趋势改变止损点: ${trendStop !== null ? trendStop : '未知'}`);
+
+// AI 智能趋势带信号
+switch (safeStr(data.AIbandsignal)) {
+  case 'green uptrend': signals.push('AI 智能趋势带: 上升趋势'); break;
+  case 'red downtrend': signals.push('AI 智能趋势带: 下降趋势'); break;
+  default: signals.push('AI 智能趋势带: 状态未知');
+}
+
+// Squeeze Momentum 信号
+switch (safeStr(data.SQZsignal)) {
+  case 'squeeze': signals.push('市场处于横盘挤压'); break;
+  case 'no squeeze': signals.push('市场不在横盘挤压'); break;
+  default: signals.push('Squeeze Momentum: 状态未知');
+}
+
+// Chopping Range 信号
+switch (safeStr(data.choppingrange_signal)) {
+  case 'chopping': signals.push('市场处于震荡区间'); break;
+  case 'no chopping': signals.push('市场处于非震荡区间'); break;
+  default: signals.push('Chopping Range: 状态未知');
+}
+
+// Center Trend 信号
+switch (safeStr(data.center_trend)) {
+  case 'Strong Bullish': signals.push('中心趋势强烈看涨'); break;
+  case 'Weak Bullish': signals.push('中心趋势弱看涨'); break;
+  case 'Weak Bearish': signals.push('中心趋势弱看跌'); break;
+  case 'Strong Bearish': signals.push('中心趋势强烈看跌'); break;
+  default: signals.push('中心趋势: 状态未知');
+}
+
+// WaveMatrix 状态信号
+switch (safeStr(data.wavemarket_state)) {
+  case 'Long Strong': signals.push('WaveMatrix 状态: 强烈上涨趋势'); break;
+  case 'Long Weak': signals.push('WaveMatrix 状态: 弱上涨趋势'); break;
+  case 'Short Strong': signals.push('WaveMatrix 状态: 强烈下跌趋势'); break;
+  case 'Short Weak': signals.push('WaveMatrix 状态: 弱下跌趋势'); break;
+  case 'Neutral': signals.push('WaveMatrix 状态: 中性'); break;
+  default: signals.push('WaveMatrix 状态: 状态未知');
+}
+
+// Elliott Wave Trend 信号
+switch (safeStr(data.ewotrend_state)) {
+  case 'Strong Bullish': signals.push('艾略特波浪趋势: 强烈上涨趋势'); break;
+  case 'Weak Bullish': signals.push('艾略特波浪趋势: 弱上涨趋势'); break;
+  case 'Weak Bearish': signals.push('艾略特波浪趋势: 弱下跌趋势'); break;
+  case 'Strong Bearish': signals.push('艾略特波浪趋势: 强烈下跌趋势'); break;
+  default: signals.push('艾略特波浪趋势: 状态未知');
+}
+
+// HTFwave_signal 信号
+switch (safeStr(data.HTFwave_signal)) {
+  case 'Bullish': signals.push('高时间框架波浪信号: 看涨'); break;
+  case 'Bearish': signals.push('高时间框架波浪信号: 看跌'); break;
+  case 'Neutral': signals.push('高时间框架波浪信号: 中性'); break;
+  default: signals.push('高时间框架波浪信号: 状态未知');
+}
+
+// OscRating 和 TrendRating 比较
+if (oscrating !== null && trendrating !== null) {
+  if (oscrating > trendrating) signals.push('趋势初期，结构不稳，波动幅度较高');
+  else if (oscrating < trendrating) signals.push('趋势主导，方向性强，波动相对平稳');
+  else signals.push('趋势状态平衡，波动适中');
+} else {
+  signals.push('趋势评级状态: 未知');
+}

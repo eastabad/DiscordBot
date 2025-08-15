@@ -4,6 +4,17 @@ This project is an advanced Python-based Discord bot with TradingView webhook in
 
 ## Recent Changes (August 15, 2025)
 
+✅ **增强TradingView信号解析和AI报告系统** - 完整的22+技术指标智能解析
+- 重构 `tradingview_handler.py` 添加 `_parse_detailed_signals()` 方法，支持完整信号解析
+- 实现22+技术指标中文映射：PMA、CVD、RSI-HA、BBP、Choppiness、ADX、MA趋势等
+- 增强 `gemini_report_generator.py` 集成新的结构化Markdown报告模板
+- 添加止损止盈价格提取、风险等级评估、OscRating/TrendRating分析
+- 支持多时间框架趋势分析：15分钟、1小时、4小时级别
+- 新增交易建议生成：基于大级别趋势判断顺势/逆势交易
+- 完整的信号解析包括：趋势方向、波动分析、买卖压力、风险提示
+- 测试验证：26个信号完整解析，中文描述，智能分类
+- AI报告格式：市场概况、关键信号、趋势分析、投资建议、风险提示
+
 ✅ **TradingView数据接收和AI报告生成系统** - 完整的webhook到报告流程
 - 创建 `TradingViewData` 数据库模型存储TradingView推送数据
 - 实现 `tradingview_handler.py` 解析和存储webhook数据（15分钟、1小时、4小时）
