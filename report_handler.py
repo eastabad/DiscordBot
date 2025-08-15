@@ -144,9 +144,10 @@ class ReportHandler:
                 # 更新用户请求计数
                 self.rate_limiter.record_request(user_id, username)
                 
-                # 发送私信
+                # 发送私信，支持长报告分割
                 try:
-                    await message.author.send(f"📋 **{symbol} 分析报告**\n\n{report}")
+                    full_report = f"📋 **{symbol} 分析报告**\n\n{report}"
+                    await self._send_long_message_dm(message.author, full_report)
                     await processing_msg.edit(content=f"✅ {symbol} 分析报告已发送到您的私信中")
                 except discord.Forbidden:
                     # 如果无法发送私信，直接在频道回复
@@ -188,6 +189,18 @@ class ReportHandler:
             chunks.append(current_chunk.strip())
         
         return chunks
+    
+    async def _send_long_message_dm(self, user, message: str):
+        """发送长消息到私信，自动分割"""
+        if len(message) <= 2000:
+            await user.send(message)
+        else:
+            chunks = self._split_message(message, 1900)
+            for i, chunk in enumerate(chunks):
+                if i == 0:
+                    await user.send(chunk)
+                else:
+                    await user.send(f"**续第{i+1}部分：**\n{chunk}")
     
     def get_example_message(self) -> str:
         """获取示例使用说明"""
