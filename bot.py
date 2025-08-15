@@ -85,6 +85,12 @@ class DiscordBot(commands.Bot):
         else:
             self.logger.warning('未设置监控频道ID')
         
+        # 输出report频道信息
+        if hasattr(self.config, 'report_channel_ids') and self.config.report_channel_ids:
+            self.logger.info(f'Report频道IDs: {", ".join(self.config.report_channel_ids)}')
+        else:
+            self.logger.info('Report频道: 监控所有名为"report"的频道')
+        
         # 启动频道清理服务
         await self.channel_cleaner.start_daily_cleanup()
         self.logger.info("频道清理服务已启动")
@@ -174,8 +180,8 @@ class DiscordBot(commands.Bot):
             self.logger.info(f'在监控频道中检测到图表图片，开始处理图表分析...')
             await self.handle_chart_analysis_request(message)
         # 检查是否为report频道的报告请求
-        elif self.report_handler.is_report_request(message):
-            self.logger.info(f'在report频道中检测到分析报告请求...')
+        elif self.is_report_channel(message.channel) and not message.author.bot:
+            self.logger.info(f'在report频道 #{message.channel.name} 中检测到分析报告请求...')
             await self.report_handler.process_report_request(message)
         else:
             self.logger.debug(f'消息不包含提及或股票命令: {message.content[:30]}')
@@ -328,6 +334,15 @@ class DiscordBot(commands.Bot):
         """检查消息是否包含股票命令格式"""
         # 简单检查是否包含股票符号和时间框架格式
         return bool(re.search(r'[A-Z:]+[,\s]+\d+[smhdwMy]', content, re.IGNORECASE))
+    
+    def is_report_channel(self, channel) -> bool:
+        """检查是否为report频道"""
+        if hasattr(self.config, 'report_channel_ids') and self.config.report_channel_ids:
+            # 如果配置了特定的report频道ID
+            return str(channel.id) in self.config.report_channel_ids
+        else:
+            # 默认检查频道名是否包含"report"
+            return channel.name and "report" in channel.name.lower()
     
     def has_prediction_command(self, content: str) -> bool:
         """检查消息是否包含预测请求"""

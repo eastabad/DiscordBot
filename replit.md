@@ -4,6 +4,15 @@ This project is an advanced Python-based Discord bot with TradingView webhook in
 
 ## Recent Changes (August 15, 2025)
 
+✅ **Report频道监控和AI分析报告系统** - 完整的用户交互和智能分析
+- 实现专门的report频道监控功能，自动检测所有名为"report"的频道
+- 配置智能频道检测：支持频道ID指定或名称模式匹配
+- 集成 `report_handler.py` 处理report频道的股票分析请求格式
+- 支持多种请求格式：股票代码+时间框架（AAPL 15m、TSLA 1h、NVDA 4h）
+- 完整的用户交互流程：频道检测→请求解析→AI分析→私信发送
+- 创建详细测试指南：`report_channel_test_guide.md`
+- 系统状态日志显示：监控所有名为"report"的频道
+
 ✅ **增强TradingView信号解析和AI报告系统** - 完整的22+技术指标智能解析
 - 重构 `tradingview_handler.py` 添加 `_parse_detailed_signals()` 方法，支持完整信号解析
 - 实现22+技术指标中文映射：PMA、CVD、RSI-HA、BBP、Choppiness、ADX、MA趋势等
