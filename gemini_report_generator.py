@@ -91,14 +91,19 @@ class GeminiReportGenerator:
         osc_rating = raw_data.get('extras', {}).get('oscrating', '未知')
         trend_rating = raw_data.get('extras', {}).get('trendrating', '未知')
         
-        # 使用新的报告模板
+        # 构建信号列表字符串
+        signals_text = ','.join(signals_list) if signals_list else '暂无可用信号'
+        
+        # 使用正确的报告模板格式
         prompt = f"""
-生成一份针对 {trading_data.symbol} 的中文交易报告，格式为 Markdown，包含以下部分：
+生成一份针对{trading_data.symbol}的中文交易报告，格式为 Markdown，包含以下部分：
 
 ## 📈 市场概况
 简要说明市场整体状态和当前交易环境。
 
 ## 🔑 关键交易信号
+逐条列出以下原始信号，不做删改：
+{signals_text}
 逐条列出以下原始信号，不做删改：
 {signals_text}
 
