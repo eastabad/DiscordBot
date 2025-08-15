@@ -1,134 +1,6 @@
 # Overview
 
-This project is an advanced Python-based Discord bot with TradingView webhook integration designed to handle four core user requests: stock chart generation, stock analysis, image analysis, and AI-powered report generation. The bot focuses on providing high-quality trading insights while maintaining user request limits and automated channel cleanup. The system now includes both Discord bot functionality and API server capabilities for receiving external data.
-
-## Recent Changes (August 15, 2025)
-
-✅ **频道行为区分系统完成** - REPORT频道和MONITOR频道功能分离
-- 修复 `report_handler.py` 中的rate limiter方法名错误
-- 实现频道类型优先级逻辑：REPORT频道优先处理AI报告
-- 配置环境变量支持：`REPORT_CHANNEL_ID=1406017230126448671`
-- 完善Discord格式化系统，支持JavaScript逻辑转换到Python
-- 新增美东时间处理、Markdown结构化解析、关键价格高亮
-- 安装pytz时区处理库，实现标题日期自动更新
-- 创建测试数据验证系统功能正常
-- 频道行为文档：`channel_behavior_guide.md`, `test_channel_behavior.md`
-
-✅ **Report频道监控和AI分析报告系统** - 完整的用户交互和智能分析
-- 实现专门的report频道监控功能，自动检测所有名为"report"的频道
-- 配置智能频道检测：支持频道ID指定或名称模式匹配
-- 集成 `report_handler.py` 处理report频道的股票分析请求格式
-- 支持多种请求格式：股票代码+时间框架（AAPL 15m、TSLA 1h、NVDA 4h）
-- 完整的用户交互流程：频道检测→请求解析→AI分析→私信发送
-- 创建详细测试指南：`report_channel_test_guide.md`
-- 系统状态日志显示：监控所有名为"report"的频道
-
-✅ **增强TradingView信号解析和AI报告系统** - 完整的22+技术指标智能解析
-- 重构 `tradingview_handler.py` 添加 `_parse_detailed_signals()` 方法，支持完整信号解析
-- 实现22+技术指标中文映射：PMA、CVD、RSI-HA、BBP、Choppiness、ADX、MA趋势等
-- 增强 `gemini_report_generator.py` 集成新的结构化Markdown报告模板
-- 添加止损止盈价格提取、风险等级评估、OscRating/TrendRating分析
-- 支持多时间框架趋势分析：15分钟、1小时、4小时级别
-- 新增交易建议生成：基于大级别趋势判断顺势/逆势交易
-- 完整的信号解析包括：趋势方向、波动分析、买卖压力、风险提示
-- 测试验证：26个信号完整解析，中文描述，智能分类
-- AI报告格式：市场概况、关键信号、趋势分析、投资建议、风险提示
-
-✅ **TradingView数据接收和AI报告生成系统** - 完整的webhook到报告流程
-- 创建 `TradingViewData` 数据库模型存储TradingView推送数据
-- 实现 `tradingview_handler.py` 解析和存储webhook数据（15分钟、1小时、4小时）
-- 开发 `gemini_report_generator.py` 集成Google Gemini-2.5-pro生成AI分析报告
-- 新增 `report_handler.py` 处理report频道的股票分析请求
-- 添加API端点 `/webhook-test/TV` 和 `/webhook/tradingview` 接收TradingView数据
-- 创建 `main_with_api.py` 同时运行Discord机器人和API服务器
-- 支持report频道格式：`股票代码 时间框架`（如 `AAPL 1h`、`TSLA 15m`、`NVDA 4h`）
-- AI报告通过私信发送，包含完整技术指标分析和投资建议
-- 集成用户限制系统（每日3次）和错误处理机制
-
-## Recent Changes (August 12, 2025)
-
-✅ **Docker数据库连接问题完全修复** - 用户限制功能在VPS环境完全正常工作
-- 修复 `models.py` 数据库连接池配置，添加 pool_pre_ping 和连接超时
-- 增强 `rate_limiter.py` 错误处理，数据库失败时安全拒绝请求
-- 集成 `bot.py` 启动时数据库初始化和功能验证
-- 创建完整的测试和验证脚本：`test-user-limits.py`, `verify-user-limits.sh`
-- 更新状态检查脚本 `check-status.sh` 正确显示Docker环境配置
-- 确认Docker容器中PostgreSQL数据库表正确创建和功能验证通过
-
-## Recent Changes (August 12, 2025)
-
-✅ **VPS自动更新系统** - 一键代码部署到VPS生产环境
-- 创建 `update-vps.sh` 自动化VPS代码更新脚本
-- 开发 `quick-deploy.sh` 本地到VPS完整部署流程
-- 配置文件管理：`vps-config.sh` 安全存储VPS连接信息
-- 自动化流程：SSH连接、代码拉取、Docker重建、服务重启、健康检查
-- 安全特性：配置备份、Git stash保护、一键回滚功能
-- 数据库自动修复：集成 `fix-database.py` 确保用户限制功能正常
-- 完整文档：VPS_AUTO_UPDATE_GUIDE.md
-
-✅ **手动用户豁免系统** - 管理员通过Discord命令精确控制用户权限
-- 保持原有的手动豁免设计，管理员可通过 `!exempt_add` 添加特定用户豁免
-- 支持豁免用户管理：`!exempt_add`, `!exempt_remove`, `!exempt_list` 命令
-- 用户可通过 `!quota` 查看个人配额状态，豁免用户显示无限制状态
-- 完整的豁免用户数据库记录和管理功能
-- 创建详细使用指南：MANUAL_EXEMPT_GUIDE.md
-
-✅ **VPS Docker部署完整方案** - 创建完整的自主部署解决方案
-- 创建完整Docker容器化配置：Dockerfile, docker-compose.yml, docker-requirements.txt  
-- 开发一键部署脚本 `vps-deploy.sh` 支持Ubuntu/Debian/CentOS自动安装Docker
-- 生成部署包 `discord-bot-deploy.tar.gz` (76KB) 包含所有必需文件
-- 创建管理脚本：start.sh, stop.sh, restart.sh, logs.sh, backup.sh
-- 配置健康检查端点，自动重启策略，数据持久化
-- 完整文档：VPS_DEPLOYMENT_GUIDE.md, DEPLOYMENT_FINAL.md
-- 支持$3-5/月VPS部署，实现完全自主控制的24/7运行
-
-✅ **部署完整解决方案** - 彻底解决Replit云部署问题  
-- 重写 `main.py` 作为统一部署入口点，包含健康检查功能
-- 集成Discord机器人和HTTP服务器（端口5000）于单一进程
-- 实现异步启动：先启动健康检查服务器，再启动Discord机器人
-- 状态追踪：全局bot_status变量实时监控机器人运行状态
-- 完整的环境变量验证和错误处理
-- 符合Replit部署要求：main.py自动检测，HTTP健康检查通过
-
-✅ **部署问题修复** - 解决Replit云部署健康检查失败问题
-- 创建专用部署入口点 `deploy_main.py` 和 `main_deploy.py`
-- 修复 `simple_bot.py` 中的类型安全问题（Discord token验证）
-- 创建 `deploy_with_health.py` 包含HTTP健康检查服务器（端口5000）
-- 确保部署系统可以找到正确的主入口点并通过健康检查
-- 维持纯Discord机器人架构，无需复杂的API服务器
-
-✅ **系统架构简化** - 移除API服务器，专注核心Discord机器人功能
-- 创建简化版入口点 `simple_bot.py`，去掉API服务器组件
-- 移除 `start_with_api` 方法，使用纯Discord机器人模式
-- 保留三大核心功能：图表获取、股票分析、图片分析
-- 保留用户限制系统和频道清理功能
-- 简化部署配置，使用console输出模式
-
-✅ **Discord机器人核心功能保留** - 专注用户核心需求
-- 股票图表生成与TradingView集成 
-- AI驱动的股票分析和预测
-- 图表图像分析功能
-- 用户每日请求限制（3次/天）
-- VIP/豁免用户管理系统
-- 自动频道清理（每日凌晨2点UTC）
-
-✅ **实时日志系统集成** - 完整的用户请求追踪和统计
-- 创建 `daily_logger.py` 实时记录所有用户请求
-- 集成到三大核心功能：图表、预测、分析请求
-- JSON格式日志文件，按日期存储在 `daily_logs/` 目录
-- 记录成功/失败状态、用户信息、请求内容、频道信息
-- 创建 `log_viewer.py` 命令行工具查看历史统计
-- 新增管理员命令 `!logs` 在Discord中查看今日统计
-- 支持实时监控模式和多日趋势分析
-
-✅ **专用日志查看网页** - 替代Discord命令的完整解决方案 
-- 创建 `simple_log_viewer.py` Web应用，提供详细的日志查看界面
-- 实时服务状态监控：Discord机器人、数据库、系统资源监控
-- 按用户分组显示所有请求详情，包括具体股票代码和时间戳
-- 支持多日期查看，每30秒自动刷新最新数据
-- 修复JSON数组格式兼容性，正确显示所有历史记录
-- 图片分析功能改进：强制要求用户提供股票代码（@机器人 AAPL + 图片）
-- 网页端口5000，包含实时状态API接口
+This project is an advanced Python-based Discord bot with integrated API server capabilities, designed to provide high-quality trading insights. It handles four core user requests: stock chart generation, stock analysis, image analysis, and AI-powered report generation. The system ensures user request limits and automated channel cleanup, while also supporting enhanced data storage for various TradingView signal types (signal, trade, close). It includes a robust report channel monitoring system for AI analysis and offers comprehensive AI-driven report generation with detailed technical indicator解析 and investment recommendations. The project aims for fully autonomous operation with a robust deployment solution and dedicated logging systems.
 
 # User Preferences
 
@@ -139,71 +11,68 @@ Preferred communication style: Simple, everyday language.
 ## Core Architectural Decisions
 
 **Bot Architecture**:
-- Advanced design using `discord.py` commands.Bot framework with integrated API server.
-- Event-driven architecture utilizing Discord's gateway events (`on_ready`, `on_message`).
-- Asynchronous programming model with Python's `asyncio` for concurrency.
-- Hybrid mode - Discord bot + API server for TradingView webhook integration.
+- Advanced design using `discord.py` commands.Bot framework with an integrated API server for TradingView webhook integration.
+- Event-driven architecture utilizing Discord's gateway events and asynchronous programming with Python's `asyncio`.
+- Hybrid mode supporting both Discord bot functionality and API server capabilities.
 
 **Configuration Management**:
-- Centralized system prioritizing environment variables over file-based configuration.
-- Supports `.env` file loading and direct environment variable access.
-- Includes validation for required parameters and sensible defaults.
+- Centralized system prioritizing environment variables over file-based configuration, supporting `.env` file loading and direct access.
 
 **Message Processing Pipeline**:
-- Listens for `@mention` events and stock commands in monitored Discord channels.
-- Monitors `report` channels for AI analysis report requests.
-- Filters bot's own messages to prevent loops.
+- Listens for `@mention` events and stock commands in monitored Discord channels, including dedicated "report" channels for AI analysis requests.
 - Processes four core request types: stock charts, stock analysis, image analysis, and AI reports.
-- Integrates with TradingView webhook data for real-time technical analysis.
-- Maintains user request limits and provides admin management capabilities.
+- Integrates with TradingView webhook data for real-time technical analysis and maintains user request limits.
 
 **Error Handling Strategy**:
-- Multi-layered approach with retry mechanisms (exponential backoff) for webhook delivery.
-- Comprehensive logging at different severity levels.
-- Graceful degradation for unavailable external services.
+- Multi-layered approach with retry mechanisms (exponential backoff), comprehensive logging, and graceful degradation for external services.
 
 **UI/UX Decisions**:
-- Responses are primarily delivered via private messages to reduce channel spam, with a notification in the original channel (`"已发送到您的私信中"`).
-- Uses clear error messages instead of simple reactions.
-- Admin commands provide gold-colored embeds for exemption status.
+- Responses are primarily delivered via private messages to reduce channel spam, with a notification in the original channel.
+- Uses clear error messages. Admin commands provide gold-colored embeds for exemption status.
 
 ## Technical Implementations & Feature Specifications
 
 **Discord Bot Functionality**:
-- Monitors multiple specified channels (configured via `MONITOR_CHANNEL_IDS`).
-- Supports both single and multiple channel configurations with backward compatibility.
-- Handles various command formats, including Chinese and English commas.
+- Monitors multiple specified channels and handles various command formats.
+- Differentiates channel behavior, prioritizing AI report processing in "report" channels.
 
 **Stock Chart Generation & Analysis**:
-- Generates stock charts using a Layout Chart Storage API, leveraging true custom TradingView layouts (1920x1080).
-- Responds to simple stock commands (e.g., "AAPL,1h") without `@bot` prefix in monitored channels.
-- Integrates AI for chart image analysis, including trend band signals (BUY/SELL), TrendTracer analysis, EMA trend band analysis, and support/resistance zone detection.
-- Provides comprehensive stock trend prediction services with technical analysis algorithms (RSI), trading signal generation, and investment recommendations.
-- Implements intelligent stock exchange detection for unknown symbols, testing against various exchanges (NASDAQ, NYSE, AMEX, OTC) and falling back to NASDAQ.
-- Covers over 500 mainstream US stocks, including SP500, NASDAQ-100, and Chinese concept stocks, with accurate exchange prefixing.
+- Generates stock charts using a Layout Chart Storage API, leveraging custom TradingView layouts.
+- Responds to stock commands (e.g., "AAPL,1h") and integrates AI for chart image analysis (trend band signals, TrendTracer, EMA, support/resistance).
+- Provides comprehensive stock trend prediction services with technical analysis algorithms and investment recommendations.
+- Implements intelligent stock exchange detection for unknown symbols, covering over 500 mainstream US stocks.
+
+**TradingView Webhook Integration**:
+- Receives and parses TradingView webhook data, storing enhanced data types (signal, trade, close) with detailed trading fields.
+- Supports 22+ technical indicator intelligent parsing and multi-timeframe trend analysis.
+- Generates structured AI reports with market overview, key signals, trend analysis, investment advice, and risk warnings.
 
 **User & Admin Management**:
-- Implements a daily request limit (3 requests per user per day) using PostgreSQL and SQLAlchemy, applicable to all features (charts, predictions, image analysis).
-- Includes an admin exemption system to bypass daily limits for specified users, managed via commands (`!exempt_add`, `!exempt_remove`, `!exempt_list`).
-- Features a command-based VIP management system (`!vip_add`, `!vip_remove`, `!vip_list`) with administrator permission checking.
+- Implements a daily request limit (3 requests per user per day) using PostgreSQL.
+- Includes an admin exemption system (`!exempt_add`, `!exempt_remove`, `!exempt_list`) and a VIP management system (`!vip_add`, `!vip_remove`, `!vip_list`).
 
 **Channel Management**:
-- Automatic daily channel cleanup (2 AM UTC) for monitored channels, intelligently filtering messages to preserve valuable content while removing clutter.
+- Automatic daily channel cleanup (2 AM UTC) for monitored channels, intelligently filtering messages.
+
+**Deployment & Logging**:
+- Provides a comprehensive Docker deployment solution for VPS environments, including automated updates and self-recovery.
+- Features a real-time logging system (`daily_logger.py`) for all user requests, storing JSON logs by date.
+- Offers a dedicated web-based log viewer (`simple_log_viewer.py`) for detailed request tracking and real-time service status monitoring.
 
 ## Design Patterns
 
-- **Dependency Injection**: Configuration and webhook handler instances injected into the bot class.
-- **Single Responsibility Principle**: Modules focused on specific tasks (config, webhook, bot logic).
-- **Observer Pattern**: Bot observes Discord message events and reacts accordingly.
+- **Dependency Injection**: Configuration and webhook handler instances injected.
+- **Single Responsibility Principle**: Modules focused on specific tasks.
+- **Observer Pattern**: Bot observes Discord message events.
 
 # External Dependencies
 
 ## Core Libraries
 - **discord.py**: Discord API wrapper.
-- **aiohttp**: Asynchronous HTTP client for webhook and external API communication.
+- **aiohttp**: Asynchronous HTTP client.
 - **python-dotenv**: Environment variable management.
 - **SQLAlchemy**: ORM for database interactions.
-- **psycopg2** (implied by PostgreSQL/SQLAlchemy usage): PostgreSQL adapter.
+- **psycopg2**: PostgreSQL adapter.
 
 ## Discord Integration
 - **Discord Bot Token**: Authentication credential.
@@ -212,17 +81,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Webhook Infrastructure
 - **External Webhook Endpoints**: HTTP endpoints for receiving forwarded Discord data.
-- **HTTP Client Configuration**: Configurable timeouts and retries for delivery.
 
 ## APIs & Services
 - **Layout Chart Storage API (TradingView)**: For generating custom stock charts.
 - **Chart-img API**: Used for testing symbol availability across exchanges.
 - **AI Trend Band Signal Recognition Service**: For chart analysis.
 - **Stock Trend Prediction Service**: For market predictions.
+- **Google Gemini-2.5-pro**: For AI analysis report generation.
 
 ## Database
-- **PostgreSQL**: Used for user tracking, daily request limits, and VIP/exemption management.
+- **PostgreSQL**: Used for user tracking, daily request limits, VIP/exemption management, and enhanced TradingView data storage.
 
 ## Runtime Environment
 - **Python 3.7+**.
-- **Environment Variables**: For `DISCORD_TOKEN`, `WEBHOOK_URL`, `MONITOR_CHANNEL_IDS`, `CHART_IMG_API_KEY`, `LAYOUT_ID`, and TradingView session.
+- **Environment Variables**: For `DISCORD_TOKEN`, `WEBHOOK_URL`, `MONITOR_CHANNEL_IDS`, `CHART_IMG_API_KEY`, `LAYOUT_ID`, `REPORT_CHANNEL_ID`, and TradingView session.

@@ -45,37 +45,67 @@ class ExemptUser(Base):
 
 
 class TradingViewData(Base):
-    """TradingView推送数据存储表"""
+    """TradingView webhook数据存储 - 增强版支持3种数据类型"""
     __tablename__ = 'tradingview_data'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String(20), nullable=False, index=True)  # 股票代码，如 AAPL
     timeframe = Column(String(10), nullable=False, index=True)  # 时间框架，如 15m, 1h, 4h
     
-    # TradingView推送的原始数据字段
-    timestamp = Column(DateTime, nullable=False, index=True)  # 数据时间戳
-    open_price = Column(Float, nullable=True)  # 开盘价
-    high_price = Column(Float, nullable=True)  # 最高价
-    low_price = Column(Float, nullable=True)   # 最低价
-    close_price = Column(Float, nullable=True) # 收盘价
-    volume = Column(Float, nullable=True)      # 成交量
+    # 数据类型标记: 'signal', 'trade', 'close'
+    data_type = Column(String(10), nullable=False, index=True)
     
-    # 技术指标数据
-    rsi = Column(Float, nullable=True)         # RSI指标
-    macd = Column(Float, nullable=True)        # MACD指标
-    sma_20 = Column(Float, nullable=True)      # 20日简单移动平均线
-    sma_50 = Column(Float, nullable=True)      # 50日简单移动平均线
+    # 交易相关字段 (仅trade和close类型使用)
+    action = Column(String(10), nullable=True)  # 'buy', 'sell', 'close'
+    quantity = Column(Float, nullable=True)
+    
+    # 止盈止损价格 (仅trade类型使用)
+    take_profit_price = Column(Float, nullable=True)
+    stop_loss_price = Column(Float, nullable=True)
+    
+    # 风险评级和指标评级 (仅trade类型使用)
+    osc_rating = Column(Float, nullable=True)
+    trend_rating = Column(Float, nullable=True)
+    risk_level = Column(Integer, nullable=True)
+    
+    # 触发指标信息 (仅trade类型使用)
+    trigger_indicator = Column(String(100), nullable=True)
+    trigger_timeframe = Column(String(10), nullable=True)
     
     # 原始JSON数据存储（用于保存完整信息）
-    raw_data = Column(Text, nullable=True)     # 原始JSON字符串
+    raw_data = Column(Text, nullable=False)  # 原始JSON字符串
+    
+    # 解析后的信号数据 (JSON格式存储)
+    parsed_signals = Column(Text, nullable=True)  # 解析后的信号列表JSON
     
     # 系统字段
-    received_at = Column(DateTime, default=func.now(), nullable=False)  # 接收时间
+    received_at = Column(DateTime, default=func.now(), nullable=False, index=True)  # 接收时间
+    processed_at = Column(DateTime, nullable=True)  # 处理时间
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     def __repr__(self):
-        return f"<TradingViewData(symbol='{self.symbol}', timeframe='{self.timeframe}', timestamp='{self.timestamp}', close='{self.close_price}')>"
+        return f"<TradingViewData {self.data_type}:{self.symbol}-{self.timeframe} at {self.received_at}>"
+    
+    def to_dict(self):
+        """转换为字典格式"""
+        return {
+            'id': self.id,
+            'symbol': self.symbol,
+            'timeframe': self.timeframe,
+            'data_type': self.data_type,
+            'action': self.action,
+            'quantity': self.quantity,
+            'take_profit_price': self.take_profit_price,
+            'stop_loss_price': self.stop_loss_price,
+            'osc_rating': self.osc_rating,
+            'trend_rating': self.trend_rating,
+            'risk_level': self.risk_level,
+            'trigger_indicator': self.trigger_indicator,
+            'trigger_timeframe': self.trigger_timeframe,
+            'received_at': self.received_at.isoformat() if self.received_at else None,
+            'processed_at': self.processed_at.isoformat() if self.processed_at else None
+        }
 
 # 数据库连接设置
 DATABASE_URL = os.environ.get('DATABASE_URL')

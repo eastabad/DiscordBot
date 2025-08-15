@@ -325,14 +325,21 @@ class DiscordAPIServer:
             data = await request.json()
             self.logger.info(f"收到TradingView webhook数据: {data}")
             
-            # 创建处理器并处理数据
+            # 创建处理器并使用增强版存储
             tv_handler = TradingViewHandler()
-            success = tv_handler.process_webhook(data)
+            success = tv_handler.store_enhanced_data(data)
             
             if success:
+                # 检测数据类型并提供详细响应
+                data_type = tv_handler._detect_data_type(data)
+                symbol, timeframe = tv_handler._extract_basic_info(data, data_type)
+                
                 return web.json_response({
                     'status': 'success',
-                    'message': 'TradingView数据已成功处理和存储',
+                    'message': f'TradingView {data_type} 数据已成功处理和存储',
+                    'data_type': data_type,
+                    'symbol': symbol,
+                    'timeframe': timeframe,
                     'timestamp': datetime.now().isoformat()
                 })
             else:

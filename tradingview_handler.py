@@ -356,6 +356,124 @@ class TradingViewHandler:
         
         return signals
     
+    def store_enhanced_data(self, raw_payload: Dict) -> bool:
+        """存储增强版TradingView数据到数据库 - 支持三种数据类型"""
+        try:
+            session = get_db_session()
+            
+            # 自动检测数据类型
+            data_type = self._detect_data_type(raw_payload)
+            
+            # 提取基本信息
+            symbol, timeframe = self._extract_basic_info(raw_payload, data_type)
+            
+            if not symbol:
+                self.logger.warning("无法提取symbol信息")
+                return False
+            
+            # 创建新的数据记录
+            tv_data = TradingViewData(
+                symbol=symbol.upper(),
+                timeframe=timeframe,
+                data_type=data_type,
+                raw_data=json.dumps(raw_payload, ensure_ascii=False),
+                received_at=datetime.now()
+            )
+            
+            # 根据数据类型提取相关字段
+            if data_type == 'trade':
+                self._extract_trade_fields(tv_data, raw_payload)
+            elif data_type == 'close':
+                self._extract_close_fields(tv_data, raw_payload)
+            # signal类型只需要基本字段
+            
+            session.add(tv_data)
+            session.commit()
+            session.close()
+            
+            self.logger.info(f"✅ 成功存储TradingView数据: {data_type}:{symbol}-{timeframe}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"❌ 存储TradingView数据失败: {e}")
+            if 'session' in locals():
+                session.rollback()
+                session.close()
+            return False
+    
+    def _detect_data_type(self, data: Dict) -> str:
+        """自动检测数据类型"""
+        # 检查是否是平仓数据 (有sentiment: flat)
+        if 'sentiment' in data and data.get('sentiment') == 'flat':
+            return 'close'
+        
+        # 检查是否包含完整的交易信息 (有takeProfit和stopLoss)
+        if 'takeProfit' in data and 'stopLoss' in data and 'action' in data:
+            return 'trade'
+        
+        # 检查是否是顶层包含ticker和action字段的交易数据
+        if 'ticker' in data and 'action' in data and 'takeProfit' in data:
+            return 'trade'
+        
+        # 默认为信号数据
+        return 'signal'
+    
+    def _extract_basic_info(self, data: Dict, data_type: str) -> tuple:
+        """提取基本的symbol和timeframe信息"""
+        symbol = None
+        timeframe = "15m"  # 默认值
+        
+        if data_type == 'signal':
+            # 信号数据直接包含symbol
+            symbol = data.get('symbol')
+            # 从adaptive_timeframe获取时间框架
+            tf1 = data.get('adaptive_timeframe_1', '15')
+            timeframe = f"{tf1}m" if tf1 != '60' else "1h"
+            
+        elif data_type in ['trade', 'close']:
+            # 交易/平仓数据包含ticker
+            symbol = data.get('ticker')
+            # 从extras获取时间框架
+            extras = data.get('extras', {})
+            tf = extras.get('timeframe', '15m')
+            timeframe = tf
+        
+        return symbol, timeframe
+    
+    def _extract_trade_fields(self, tv_data, data: Dict):
+        """提取交易类型数据的字段"""
+        tv_data.action = data.get('action')
+        tv_data.quantity = data.get('quantity')
+        
+        # 提取止盈止损
+        if 'takeProfit' in data and isinstance(data['takeProfit'], dict):
+            tv_data.take_profit_price = data['takeProfit'].get('limitPrice')
+        
+        if 'stopLoss' in data and isinstance(data['stopLoss'], dict):
+            tv_data.stop_loss_price = data['stopLoss'].get('stopPrice')
+        
+        # 提取extras信息
+        if 'extras' in data and isinstance(data['extras'], dict):
+            extras = data['extras']
+            tv_data.osc_rating = extras.get('oscrating')
+            tv_data.trend_rating = extras.get('trendrating')
+            tv_data.risk_level = extras.get('risk')
+            tv_data.trigger_indicator = extras.get('indicator')
+            tv_data.trigger_timeframe = extras.get('timeframe')
+    
+    def _extract_close_fields(self, tv_data, data: Dict):
+        """提取平仓类型数据的字段"""
+        tv_data.action = data.get('action')  # 'buy' 或 'sell'
+        tv_data.quantity = data.get('quantity')
+        
+        # 提取extras信息
+        if 'extras' in data and isinstance(data['extras'], dict):
+            extras = data['extras']
+            tv_data.trigger_indicator = extras.get('indicator')
+            tv_data.trigger_timeframe = extras.get('timeframe')
+        
+        # 平仓通常不需要止盈止损信息
+    
     def save_to_database(self, parsed_data: Dict[str, Any]) -> bool:
         """保存数据到数据库"""
         db = None
