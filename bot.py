@@ -123,6 +123,9 @@ class DiscordBot(commands.Bot):
             str(message.channel.id) in self.config.monitor_channel_ids
         )
         
+        # 检查是否在report频道中
+        is_report_channel = self.is_report_channel(message.channel)
+        
         # 检查命令（包括管理员命令） - 优先级最高
         if message.content.startswith('!'):
             command_name = message.content.split()[0][1:]  # 移除!前缀
@@ -151,9 +154,15 @@ class DiscordBot(commands.Bot):
                 await self.process_commands(message)
                 return
         
-        if is_mentioned and is_monitored_channel and self.has_stock_command(message.content):
+        # 优先处理report频道的请求 - 专门生成AI报告
+        if is_report_channel and not message.author.bot:
+            self.logger.info(f'在report频道 #{message.channel.name} 中检测到分析报告请求...')
+            await self.report_handler.process_report_request(message)
+        # 监控频道的@提及股票命令 - 生成图表
+        elif is_mentioned and is_monitored_channel and self.has_stock_command(message.content):
             self.logger.info(f'在监控频道中检测到提及和股票命令，开始处理股票图表请求...')
             await self.handle_chart_request(message)
+        # 其他@提及处理
         elif is_mentioned:
             # 检查是否有图片附件需要分析
             if message.attachments and self.has_chart_image(message.attachments):
@@ -163,13 +172,14 @@ class DiscordBot(commands.Bot):
             elif self.has_prediction_command(message.content):
                 self.logger.info(f'检测到预测请求，开始处理股票预测...')
                 await self.handle_prediction_request(message)
-            # 检查是否是股票命令（在非监控频道中也支持@提及方式）
-            elif self.has_stock_command(message.content):
+            # 检查是否是股票命令（在非监控/非report频道中也支持@提及方式）
+            elif self.has_stock_command(message.content) and not is_report_channel:
                 self.logger.info(f'检测到@提及的股票命令，开始处理股票图表请求...')
                 await self.handle_chart_request(message)
             else:
                 self.logger.info(f'检测到@提及，开始处理webhook转发...')
                 await self.handle_mention(message)
+        # 监控频道中的直接命令 - 生成图表
         elif is_monitored_channel and self.has_stock_command(message.content):
             self.logger.info(f'在监控频道中检测到股票命令，开始处理图表请求...')
             await self.handle_chart_request(message)
@@ -179,10 +189,6 @@ class DiscordBot(commands.Bot):
         elif is_monitored_channel and message.attachments and self.has_chart_image(message.attachments):
             self.logger.info(f'在监控频道中检测到图表图片，开始处理图表分析...')
             await self.handle_chart_analysis_request(message)
-        # 检查是否为report频道的报告请求
-        elif self.is_report_channel(message.channel) and not message.author.bot:
-            self.logger.info(f'在report频道 #{message.channel.name} 中检测到分析报告请求...')
-            await self.report_handler.process_report_request(message)
         else:
             self.logger.debug(f'消息不包含提及或股票命令: {message.content[:30]}')
     

@@ -1,0 +1,13 @@
+[
+  {
+    "timestamp": "2025-08-15T21:00:36.578641",
+    "user_id": "1145170623354638418",
+    "username": "easton",
+    "request_type": "chart",
+    "content": "AAPL 1h",
+    "success": true,
+    "error": null,
+    "channel": "report",
+    "guild": "Trading Decision Algo"
+  }
+]
