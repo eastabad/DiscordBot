@@ -484,7 +484,7 @@ class TradingViewHandler:
             tv_data = TradingViewData(
                 symbol=parsed_data['symbol'],
                 timeframe=parsed_data['timeframe'],
-                timestamp=parsed_data['timestamp'],
+                received_at=datetime.fromisoformat(parsed_data['timestamp'].replace('Z', '+00:00')) if parsed_data.get('timestamp') else datetime.now(),
                 
                 # 技术指标数据存储在raw_data的JSON中
                 # 这里可以根据需要提取特定字段到专门的列
@@ -521,7 +521,7 @@ class TradingViewHandler:
             latest_data = db.query(TradingViewData).filter(
                 TradingViewData.symbol == symbol.upper(),
                 TradingViewData.timeframe == timeframe
-            ).order_by(TradingViewData.timestamp.desc()).first()
+            ).order_by(TradingViewData.received_at.desc()).first()
             
             return latest_data
             
