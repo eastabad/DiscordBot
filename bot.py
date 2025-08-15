@@ -89,7 +89,7 @@ class DiscordBot(commands.Bot):
         if hasattr(self.config, 'report_channel_ids') and self.config.report_channel_ids:
             self.logger.info(f'Report频道IDs: {", ".join(self.config.report_channel_ids)}')
         else:
-            self.logger.info('Report频道: 监控所有名为"report"的频道')
+            self.logger.info('Report频道: 未配置ID，将监控所有名为"report"的频道')
         
         # 启动频道清理服务
         await self.channel_cleaner.start_daily_cleanup()

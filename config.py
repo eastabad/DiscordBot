@@ -61,9 +61,15 @@ class Config:
             self.report_channel_ids = [id.strip() for id in report_channels_str.split(',') if id.strip()]
             self.logger.info(f"配置report频道监控: {self.report_channel_ids}")
         else:
-            # 默认监控名为"report"的频道
-            self.report_channel_ids = []
-            self.logger.info("将监控所有名为'report'的频道")
+            # 兼容单个report频道配置
+            single_report_channel = os.getenv('REPORT_CHANNEL_ID')
+            if single_report_channel:
+                self.report_channel_ids = [single_report_channel.strip()]
+                self.logger.info(f"配置单个report频道监控: {self.report_channel_ids}")
+            else:
+                # 没有配置时默认为空，将通过频道名称检测
+                self.report_channel_ids = []
+                self.logger.info("未配置report频道ID，将监控所有名为'report'的频道")
         
         # 可选配置
         self.log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
