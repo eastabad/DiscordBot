@@ -171,69 +171,211 @@ class GeminiReportGenerator:
         return indicators_text
     
     def _extract_signals_from_data(self, raw_data: Dict) -> list:
-        """从原始数据中提取解析的信号列表，使用正确的中文描述"""
+        """从原始数据中提取解析的信号列表，使用正确的中文描述，基于实际TradingView数据结构"""
         signals = []
         
-        # 使用您提供的数据格式进行解析
-        # PMA信号
-        if 'PMA' in raw_data:
-            pma_value = raw_data['PMA']
-            if 'Strong Bullish' in str(pma_value):
+        # PMA信号 (基于pmaText字段)
+        if 'pmaText' in raw_data:
+            pma_text = str(raw_data['pmaText'])
+            if 'Bullish' in pma_text:
                 signals.append('PMA 看涨')
-            elif 'Bullish' in str(pma_value):
-                signals.append('PMA 看涨')
-            elif 'Bearish' in str(pma_value):
+            elif 'Bearish' in pma_text:
                 signals.append('PMA 看跌')
             else:
-                signals.append(f'PMA {pma_value}')
+                signals.append(f'PMA {pma_text}')
         
-        # CVD信号
-        if 'CVD' in raw_data:
-            cvd_value = raw_data['CVD']
-            if 'Bullish' in str(cvd_value):
+        # CVD信号 (基于CVDsignal字段)
+        if 'CVDsignal' in raw_data:
+            cvd_signal = str(raw_data['CVDsignal'])
+            if 'cvdAboveMA' in cvd_signal:
                 signals.append('CVD 高于移动平均线 (买压增加，资金流入)')
-            else:
+            elif 'cvdBelowMA' in cvd_signal:
                 signals.append('CVD 低于移动平均线 (卖压增加，资金流出)')
-        
-        # RSI-HA信号
-        if 'RSI-HA' in raw_data:
-            rsi_ha_value = raw_data['RSI-HA']
-            if 'Bullish' in str(rsi_ha_value):
-                signals.append('Heikin Ashi RSI 看涨')
             else:
-                signals.append('Heikin Ashi RSI 看跌')
+                signals.append(f'CVD {cvd_signal}')
         
-        # BBP信号
-        if 'BBP' in raw_data:
-            bbp_value = raw_data['BBP']
-            if 'Upper' in str(bbp_value):
+        # RSI-HA信号 (基于RSIHAsignal字段)
+        if 'RSIHAsignal' in raw_data:
+            rsi_ha_signal = str(raw_data['RSIHAsignal'])
+            if 'BullishHA' in rsi_ha_signal:
+                signals.append('Heikin Ashi RSI 看涨')
+            elif 'BearishHA' in rsi_ha_signal:
+                signals.append('Heikin Ashi RSI 看跌')
+            else:
+                signals.append(f'Heikin Ashi RSI {rsi_ha_signal}')
+        
+        # BBP信号 (基于BBPsignal字段)
+        if 'BBPsignal' in raw_data:
+            bbp_signal = str(raw_data['BBPsignal']).strip()
+            if 'bullpower' in bbp_signal:
                 signals.append('多头主导控场')
+            elif 'bearpower' in bbp_signal:
+                signals.append('空头主导控场')
             else:
                 signals.append('市场处于过渡状态')
         
-        # Choppiness信号
-        if 'Choppiness' in raw_data:
-            chop_value = raw_data['Choppiness']
-            if 'Trending' in str(chop_value):
+        # Choppiness相关信号
+        if 'SQZsignal' in raw_data:
+            sqz_signal = str(raw_data['SQZsignal'])
+            if 'no squeeze' in sqz_signal:
+                signals.append('市场不在横盘挤压')
+            else:
+                signals.append('市场处于横盘挤压')
+        
+        if 'choppingrange_signal' in raw_data:
+            chop_signal = str(raw_data['choppingrange_signal'])
+            if 'no chopping' in chop_signal:
                 signals.append('市场处于非震荡区间')
             else:
-                signals.append('市场不在横盘挤压')
+                signals.append('市场处于震荡区间')
         
-        # ADX信号
-        if 'ADX' in raw_data:
-            adx_value = raw_data['ADX']
-            if 'Strong' in str(adx_value):
-                signals.append('ADX 强趋势')
-            else:
-                signals.append('趋势主导，方向性强，波动相对平稳')
+        # ADX信号 (基于adxValue字段)
+        if 'adxValue' in raw_data:
+            try:
+                adx_value = float(raw_data['adxValue'])
+                if adx_value > 25:
+                    signals.append('ADX 强趋势')
+                else:
+                    signals.append('ADX 弱趋势')
+            except:
+                signals.append(f'ADX {raw_data["adxValue"]}')
         
-        # MA趋势
-        if 'MA_trend' in raw_data:
-            ma_value = raw_data['MA_trend']
-            if 'Bullish' in str(ma_value):
-                signals.append('15m 分钟当前趋势: 上涨')
+        # RSI状态趋势
+        if 'rsi_state_trend' in raw_data:
+            rsi_trend = str(raw_data['rsi_state_trend'])
+            if 'Bullish' in rsi_trend:
+                signals.append('RSI 看涨')
+            elif 'Bearish' in rsi_trend:
+                signals.append('RSI 看跌')
             else:
-                signals.append('15m 分钟当前趋势: 下跌')
+                signals.append('RSI 中性')
+        
+        # MA趋势信号 (基于不同时间框架)
+        timeframe = raw_data.get('timeframe', '15m')
+        if 'MAtrend' in raw_data:
+            ma_trend = str(raw_data['MAtrend'])
+            if ma_trend == '1':
+                signals.append(f'{timeframe} 分钟当前趋势: 上涨')
+            elif ma_trend == '-1':
+                signals.append(f'{timeframe} 分钟当前趋势: 下跌')
+            else:
+                signals.append(f'{timeframe} 分钟当前趋势: 横盘')
+        
+        # 多时间框架MA趋势
+        if 'adaptive_timeframe_1' in raw_data and 'MAtrend_timeframe1' in raw_data:
+            tf1 = raw_data['adaptive_timeframe_1']
+            ma1 = str(raw_data['MAtrend_timeframe1'])
+            if ma1 == '1':
+                signals.append(f'{tf1} 分钟 MA 趋势: 上涨')
+            elif ma1 == '-1':
+                signals.append(f'{tf1} 分钟 MA 趋势: 下跌')
+        
+        if 'adaptive_timeframe_2' in raw_data and 'MAtrend_timeframe2' in raw_data:
+            tf2 = raw_data['adaptive_timeframe_2']
+            ma2 = str(raw_data['MAtrend_timeframe2'])
+            if ma2 == '1':
+                signals.append(f'{tf2} 分钟 MA 趋势: 上涨')
+            elif ma2 == '-1':
+                signals.append(f'{tf2} 分钟 MA 趋势: 下跌')
+        
+        # 平滑趋势 (基于Middle_smooth_trend字段)
+        if 'Middle_smooth_trend' in raw_data:
+            smooth_trend = str(raw_data['Middle_smooth_trend'])
+            if 'Bullish' in smooth_trend:
+                signals.append('平滑趋势: 强烈看涨')
+            elif 'Bearish' in smooth_trend:
+                signals.append('平滑趋势: 强烈看跌')
+        
+        # 动量指标 (基于MOMOsignal字段)
+        if 'MOMOsignal' in raw_data:
+            momo_signal = str(raw_data['MOMOsignal'])
+            if 'bullish' in momo_signal.lower():
+                signals.append('动量指标: 看涨')
+            elif 'bearish' in momo_signal.lower():
+                signals.append('动量指标: 看跌')
+        
+        # TrendTracer信号
+        if 'TrendTracersignal' in raw_data:
+            tt_signal = str(raw_data['TrendTracersignal'])
+            timeframe = raw_data.get('timeframe', '15m')
+            if tt_signal == '1':
+                signals.append(f'{timeframe} 分钟 TrendTracer 趋势: 绿色上涨趋势')
+            elif tt_signal == '-1':
+                signals.append(f'{timeframe} 分钟 TrendTracer 趋势: 粉色下跌趋势')
+        
+        if 'TrendTracerHTF' in raw_data and 'adaptive_timeframe_2' in raw_data:
+            tt_htf = str(raw_data['TrendTracerHTF'])
+            tf2 = raw_data['adaptive_timeframe_2']
+            if tt_htf == '1':
+                signals.append(f'{tf2} 分钟 TrendTracer 趋势: 绿色上涨趋势')
+            elif tt_htf == '-1':
+                signals.append(f'{tf2} 分钟 TrendTracer 趋势: 粉色下跌趋势')
+        
+        # 趋势改变止损点
+        if 'trend_change_volatility_stop' in raw_data:
+            trend_stop = raw_data['trend_change_volatility_stop']
+            signals.append(f'趋势改变止损点: {trend_stop}')
+        
+        # AI智能趋势带 (基于AIbandsignal字段)
+        if 'AIbandsignal' in raw_data:
+            ai_signal = str(raw_data['AIbandsignal'])
+            if 'green' in ai_signal.lower() or 'uptrend' in ai_signal.lower():
+                signals.append('AI 智能趋势带: 上升趋势')
+            elif 'red' in ai_signal.lower() or 'downtrend' in ai_signal.lower():
+                signals.append('AI 智能趋势带: 下降趋势')
+        
+        # 中心趋势 (基于center_trend字段)
+        if 'center_trend' in raw_data:
+            center_trend = str(raw_data['center_trend'])
+            if 'Strong Bullish' in center_trend:
+                signals.append('中心趋势强烈看涨')
+            elif 'Strong Bearish' in center_trend:
+                signals.append('中心趋势强烈看跌')
+            elif 'Bullish' in center_trend:
+                signals.append('中心趋势看涨')
+            elif 'Bearish' in center_trend:
+                signals.append('中心趋势看跌')
+        
+        # WaveMatrix状态 (基于wavemarket_state字段)
+        if 'wavemarket_state' in raw_data:
+            wave_state = str(raw_data['wavemarket_state'])
+            if 'Long Strong' in wave_state:
+                signals.append('WaveMatrix 状态: 强烈上涨趋势')
+            elif 'Short Strong' in wave_state:
+                signals.append('WaveMatrix 状态: 强烈下跌趋势')
+            elif 'Long' in wave_state:
+                signals.append('WaveMatrix 状态: 上涨趋势')
+            elif 'Short' in wave_state:
+                signals.append('WaveMatrix 状态: 下跌趋势')
+        
+        # 艾略特波浪趋势 (基于ewotrend_state字段)
+        if 'ewotrend_state' in raw_data:
+            ewo_trend = str(raw_data['ewotrend_state'])
+            if 'Strong Bullish' in ewo_trend:
+                signals.append('艾略特波浪趋势: 强烈上涨趋势')
+            elif 'Strong Bearish' in ewo_trend:
+                signals.append('艾略特波浪趋势: 强烈下跌趋势')
+            elif 'Bullish' in ewo_trend:
+                signals.append('艾略特波浪趋势: 上涨趋势')
+            elif 'Bearish' in ewo_trend:
+                signals.append('艾略特波浪趋势: 下跌趋势')
+        
+        # 高时间框架波浪信号 (基于HTFwave_signal字段)
+        if 'HTFwave_signal' in raw_data:
+            htf_wave = str(raw_data['HTFwave_signal'])
+            if 'Bullish' in htf_wave:
+                signals.append('高时间框架波浪信号: 看涨')
+            elif 'Bearish' in htf_wave:
+                signals.append('高时间框架波浪信号: 看跌')
+        
+        # 根据ADX值判断趋势强度描述
+        if 'adxValue' in raw_data:
+            try:
+                adx_value = float(raw_data['adxValue'])
+                if adx_value > 30:
+                    signals.append('趋势主导，方向性强，波动相对平稳')
+            except:
+                pass
         
         # 添加止损止盈信息
         if 'stopLoss' in raw_data and raw_data['stopLoss']:
@@ -246,10 +388,6 @@ class GeminiReportGenerator:
             if take_price:
                 signals.append(f'止盈价格: {take_price}')
         
-        if 'trend_change_volatility_stop' in raw_data:
-            trend_stop = raw_data['trend_change_volatility_stop']
-            signals.append(f'趋势改变止损点: {trend_stop}')
-        
         if 'risk' in raw_data:
             risk = raw_data['risk']
             signals.append(f'风险等级: {risk}')
@@ -261,6 +399,11 @@ class GeminiReportGenerator:
                 signals.append(f'震荡指标评级: {extras["oscrating"]}')
             if 'trendrating' in extras:
                 signals.append(f'趋势指标评级: {extras["trendrating"]}')
+        
+        # 如果有交易建议
+        if 'tradingAdvice' in raw_data:
+            advice = raw_data['tradingAdvice']
+            signals.append(f'交易建议: {advice}')
         
         return signals
     
