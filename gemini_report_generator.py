@@ -5,7 +5,9 @@ Gemini AI报告生成器
 import json
 import logging
 import os
+import re
 from typing import Dict, Any, Optional
+from datetime import datetime
 from google import genai
 from google.genai import types
 from models import TradingViewData
@@ -199,22 +201,123 @@ class GeminiReportGenerator:
         return signals
     
     def _format_report(self, report_text: str, trading_data: TradingViewData) -> str:
-        """格式化最终报告"""
+        """按照Discord格式要求格式化报告输出"""
+        try:
+            # 获取美东时间
+            eastern_date = self._get_eastern_date()
+            
+            # 从Markdown中提取并替换标题日期
+            title = self._extract_and_update_title(report_text, eastern_date)
+            
+            # 解析Markdown成结构化对象
+            sections = self._parse_markdown_sections(report_text)
+            
+            # 高亮关键价格
+            for section_name in sections:
+                sections[section_name] = self._highlight_prices(sections[section_name])
+            
+            # 构建Discord格式的最终报告
+            discord_report = f"📊 **{title}**\n\n"
+            
+            # 按顺序添加各个部分
+            section_order = [
+                "市场概况", "关键信号分析", "趋势分析", "技术指标详解", 
+                "风险评估", "交易建议", "投资建议", "风险提示"
+            ]
+            
+            for section_name in section_order:
+                if section_name in sections and sections[section_name].strip():
+                    discord_report += f"**{section_name}**\n{sections[section_name]}\n\n"
+            
+            # 添加其他未列出的部分
+            for section_name, content in sections.items():
+                if section_name not in section_order and content.strip():
+                    discord_report += f"**{section_name}**\n{content}\n\n"
+            
+            # 添加报告尾部
+            discord_report += f"⏰ **时间框架:** {trading_data.timeframe}\n"
+            discord_report += f"📅 **分析时间:** {eastern_date}\n"
+            discord_report += "=" * 40
+            
+            return discord_report.strip()
+            
+        except Exception as e:
+            self.logger.error(f"Discord格式化失败: {e}")
+            return self._format_simple_report(report_text, trading_data)
+    
+    def _get_eastern_date(self) -> str:
+        """获取美东时间日期"""
+        try:
+            import pytz
+            # 获取美东时区
+            eastern = pytz.timezone('America/New_York')
+            # 转换为美东时间
+            eastern_time = datetime.now(eastern)
+            return eastern_time.strftime('%Y年%m月%d日 (美东时间)')
+        except:
+            # 回退到UTC时间
+            return datetime.now().strftime('%Y年%m月%d日 (UTC时间)')
+    
+    def _extract_and_update_title(self, markdown_text: str, eastern_date: str) -> str:
+        """提取标题并替换日期为当前美东时间"""
+        match = re.search(r'^#\s+(.*)', markdown_text, re.MULTILINE)
+        title = match.group(1).strip() if match else "交易分析报告"
         
-        header = f"""
-📊 **{trading_data.symbol} 技术分析报告**
-🕐 数据时间: {trading_data.timestamp.strftime("%Y-%m-%d %H:%M:%S")}
-⏱️ 时间框架: {trading_data.timeframe}
-🤖 分析引擎: Gemini-2.5-Pro
-
-{'='*50}
-
-{report_text}
-
-{'='*50}
-⚠️ **免责声明**: 本报告仅供参考，不构成投资建议。投资有风险，入市需谨慎。
-"""
-        return header
+        # 替换日期部分为当前美东时间
+        title = re.sub(r'\(\d{4}年\d{1,2}月\d{1,2}日.*?\)', f'({eastern_date})', title)
+        return title
+    
+    def _highlight_prices(self, text: str) -> str:
+        """高亮关键价格信息"""
+        # 高亮止损、止盈价格
+        text = re.sub(r'(止损[^\d]*)(\d+(?:\.\d+)?)', r'🎯 **\1\2**', text)
+        text = re.sub(r'(止盈[^\d]*)(\d+(?:\.\d+)?)', r'🎯 **\1\2**', text)
+        text = re.sub(r'(趋势改变止损点[^\d]*)(\d+(?:\.\d+)?)', r'🎯 **\1\2**', text)
+        return text
+    
+    def _parse_markdown_sections(self, markdown_text: str) -> Dict[str, str]:
+        """解析Markdown成结构化对象"""
+        sections = {}
+        current_section = None
+        current_content = []
+        
+        lines = markdown_text.split('\n')
+        
+        for line in lines:
+            # 检查二级标题 (##)
+            section_match = re.match(r'^##\s+(.*)', line)
+            # 检查三级标题 (###)
+            sub_match = re.match(r'^###\s+(.*)', line)
+            
+            if section_match:
+                # 保存上一个部分
+                if current_section:
+                    sections[current_section] = '\n'.join(current_content).strip()
+                
+                # 开始新部分
+                current_section = section_match.group(1).strip()
+                current_content = []
+            elif sub_match and current_section:
+                # 添加子标题
+                current_content.append(f"\n**{sub_match.group(1)}**\n")
+            elif current_section:
+                # 添加内容行
+                current_content.append(line)
+        
+        # 保存最后一个部分
+        if current_section:
+            sections[current_section] = '\n'.join(current_content).strip()
+        
+        return sections
+    
+    def _format_simple_report(self, report_text: str, trading_data: TradingViewData) -> str:
+        """简单格式化（备用方案）"""
+        header = f"📊 **{trading_data.symbol} 技术分析报告**\n"
+        header += f"⏰ 时间框架: {trading_data.timeframe}\n"
+        header += f"📅 分析时间: {trading_data.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        header += "=" * 40 + "\n\n"
+        
+        return header + report_text.strip()
     
     def _generate_fallback_report(self, trading_data: TradingViewData, raw_data: Dict, signals_list: list = None) -> str:
         """生成备用报告（当AI生成失败时）"""
