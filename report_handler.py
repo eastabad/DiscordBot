@@ -97,10 +97,12 @@ class ReportHandler:
             user_id = str(message.author.id)
             username = message.author.display_name
             
-            if not self.rate_limiter.can_make_request(user_id, username):
-                remaining_time = self.rate_limiter.get_remaining_time(user_id)
+            can_request, current_count, remaining = self.rate_limiter.check_user_limit(user_id, username)
+            is_exempt = remaining == 999  # 豁免用户的标识
+            
+            if not can_request:
                 await message.reply(
-                    f"⏰ 您今日的请求次数已用完。请等待 {remaining_time} 后再试。"
+                    f"⚠️ {username}, 您今日的报告请求已达到限制 (3次/天)。请明天再试。"
                 )
                 return
             
