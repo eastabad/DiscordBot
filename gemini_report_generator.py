@@ -44,7 +44,7 @@ class GeminiReportGenerator:
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.7,
-                    max_output_tokens=2048
+                    max_output_tokens=4096  # 增加token限制以避免截断
                 )
             )
             
@@ -64,6 +64,11 @@ class GeminiReportGenerator:
                                 if hasattr(part, 'text') and part.text:
                                     self.logger.info(f"✅ 从candidates提取报告，长度: {len(part.text)}")
                                     return self._format_report(part.text, trading_data)
+                        
+                        # 检查是否因为MAX_TOKENS被截断
+                        if hasattr(candidate, 'finish_reason') and str(candidate.finish_reason) == 'MAX_TOKENS':
+                            self.logger.warning("Gemini响应被截断，使用备用报告")
+                            return self._generate_fallback_report(trading_data, raw_data)
                 
                 self.logger.error("Gemini API candidates中未找到有效文本")
                 return self._generate_fallback_report(trading_data, raw_data)
@@ -102,8 +107,6 @@ class GeminiReportGenerator:
 简要说明市场整体状态和当前交易环境。
 
 ## 🔑 关键交易信号
-逐条列出以下原始信号，不做删改：
-{signals_text}
 逐条列出以下原始信号，不做删改：
 {signals_text}
 
@@ -168,56 +171,96 @@ class GeminiReportGenerator:
         return indicators_text
     
     def _extract_signals_from_data(self, raw_data: Dict) -> list:
-        """从原始数据中提取解析的信号列表"""
+        """从原始数据中提取解析的信号列表，使用正确的中文描述"""
         signals = []
         
-        # 基础信号解析（简化版）
-        if raw_data.get('pmaText'):
-            pma_mapping = {
-                'PMA Strong Bullish': 'PMA 强烈看涨',
-                'PMA Bullish': 'PMA 看涨',
-                'PMA Trendless': 'PMA 无明确趋势',
-                'PMA Strong Bearish': 'PMA 强烈看跌',
-                'PMA Bearish': 'PMA 看跌'
-            }
-            signals.append(pma_mapping.get(raw_data['pmaText'], 'PMA 状态未知'))
+        # 使用您提供的数据格式进行解析
+        # PMA信号
+        if 'PMA' in raw_data:
+            pma_value = raw_data['PMA']
+            if 'Strong Bullish' in str(pma_value):
+                signals.append('PMA 看涨')
+            elif 'Bullish' in str(pma_value):
+                signals.append('PMA 看涨')
+            elif 'Bearish' in str(pma_value):
+                signals.append('PMA 看跌')
+            else:
+                signals.append(f'PMA {pma_value}')
         
-        if raw_data.get('CVDsignal'):
-            cvd_mapping = {
-                'cvdAboveMA': 'CVD 高于移动平均线 (买压增加，资金流入)',
-                'cvdBelowMA': 'CVD 低于移动平均线 (卖压增加，资金流出)'
-            }
-            signals.append(cvd_mapping.get(raw_data['CVDsignal'], 'CVD 状态未知'))
+        # CVD信号
+        if 'CVD' in raw_data:
+            cvd_value = raw_data['CVD']
+            if 'Bullish' in str(cvd_value):
+                signals.append('CVD 高于移动平均线 (买压增加，资金流入)')
+            else:
+                signals.append('CVD 低于移动平均线 (卖压增加，资金流出)')
         
-        if raw_data.get('RSIHAsignal'):
-            rsi_ha_mapping = {
-                'BullishHA': 'Heikin Ashi RSI 看涨',
-                'BearishHA': 'Heikin Ashi RSI 看跌'
-            }
-            signals.append(rsi_ha_mapping.get(raw_data['RSIHAsignal'], 'Heikin Ashi RSI 状态未知'))
+        # RSI-HA信号
+        if 'RSI-HA' in raw_data:
+            rsi_ha_value = raw_data['RSI-HA']
+            if 'Bullish' in str(rsi_ha_value):
+                signals.append('Heikin Ashi RSI 看涨')
+            else:
+                signals.append('Heikin Ashi RSI 看跌')
         
-        if raw_data.get('center_trend'):
-            center_mapping = {
-                'Strong Bullish': '中心趋势强烈看涨',
-                'Weak Bullish': '中心趋势弱看涨',
-                'Weak Bearish': '中心趋势弱看跌',
-                'Strong Bearish': '中心趋势强烈看跌'
-            }
-            signals.append(center_mapping.get(raw_data['center_trend'], '中心趋势: 状态未知'))
+        # BBP信号
+        if 'BBP' in raw_data:
+            bbp_value = raw_data['BBP']
+            if 'Upper' in str(bbp_value):
+                signals.append('多头主导控场')
+            else:
+                signals.append('市场处于过渡状态')
         
-        if raw_data.get('rsi_state_trend'):
-            rsi_mapping = {
-                'Bullish': 'RSI 看涨',
-                'Bearish': 'RSI 看跌',
-                'Neutral': 'RSI 中性'
-            }
-            signals.append(rsi_mapping.get(raw_data['rsi_state_trend'], 'RSI 趋势: 状态未知'))
+        # Choppiness信号
+        if 'Choppiness' in raw_data:
+            chop_value = raw_data['Choppiness']
+            if 'Trending' in str(chop_value):
+                signals.append('市场处于非震荡区间')
+            else:
+                signals.append('市场不在横盘挤压')
         
-        # 如果没有信号，返回基础数据
-        if not signals:
-            for key, value in raw_data.items():
-                if key not in ['symbol', 'timestamp'] and value is not None:
-                    signals.append(f"{key}: {value}")
+        # ADX信号
+        if 'ADX' in raw_data:
+            adx_value = raw_data['ADX']
+            if 'Strong' in str(adx_value):
+                signals.append('ADX 强趋势')
+            else:
+                signals.append('趋势主导，方向性强，波动相对平稳')
+        
+        # MA趋势
+        if 'MA_trend' in raw_data:
+            ma_value = raw_data['MA_trend']
+            if 'Bullish' in str(ma_value):
+                signals.append('15m 分钟当前趋势: 上涨')
+            else:
+                signals.append('15m 分钟当前趋势: 下跌')
+        
+        # 添加止损止盈信息
+        if 'stopLoss' in raw_data and raw_data['stopLoss']:
+            stop_price = raw_data['stopLoss'].get('stopPrice', '')
+            if stop_price:
+                signals.append(f'止损价格: {stop_price}')
+        
+        if 'takeProfit' in raw_data and raw_data['takeProfit']:
+            take_price = raw_data['takeProfit'].get('limitPrice', '')
+            if take_price:
+                signals.append(f'止盈价格: {take_price}')
+        
+        if 'trend_change_volatility_stop' in raw_data:
+            trend_stop = raw_data['trend_change_volatility_stop']
+            signals.append(f'趋势改变止损点: {trend_stop}')
+        
+        if 'risk' in raw_data:
+            risk = raw_data['risk']
+            signals.append(f'风险等级: {risk}')
+        
+        # extras信息
+        if 'extras' in raw_data and raw_data['extras']:
+            extras = raw_data['extras']
+            if 'oscrating' in extras:
+                signals.append(f'震荡指标评级: {extras["oscrating"]}')
+            if 'trendrating' in extras:
+                signals.append(f'趋势指标评级: {extras["trendrating"]}')
         
         return signals
     
