@@ -1,10 +1,10 @@
 """
 数据库模型定义
-用于跟踪用户每日请求限制和使用统计
+用于跟踪用户每日请求限制和使用统计，以及TradingView数据存储
 """
 import os
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, text, Text, Float
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
@@ -42,6 +42,40 @@ class ExemptUser(Base):
     
     def __repr__(self):
         return f"<ExemptUser(user_id='{self.user_id}', username='{self.username}', reason='{self.reason}')>"
+
+
+class TradingViewData(Base):
+    """TradingView推送数据存储表"""
+    __tablename__ = 'tradingview_data'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(20), nullable=False, index=True)  # 股票代码，如 AAPL
+    timeframe = Column(String(10), nullable=False, index=True)  # 时间框架，如 15m, 1h, 4h
+    
+    # TradingView推送的原始数据字段
+    timestamp = Column(DateTime, nullable=False, index=True)  # 数据时间戳
+    open_price = Column(Float, nullable=True)  # 开盘价
+    high_price = Column(Float, nullable=True)  # 最高价
+    low_price = Column(Float, nullable=True)   # 最低价
+    close_price = Column(Float, nullable=True) # 收盘价
+    volume = Column(Float, nullable=True)      # 成交量
+    
+    # 技术指标数据
+    rsi = Column(Float, nullable=True)         # RSI指标
+    macd = Column(Float, nullable=True)        # MACD指标
+    sma_20 = Column(Float, nullable=True)      # 20日简单移动平均线
+    sma_50 = Column(Float, nullable=True)      # 50日简单移动平均线
+    
+    # 原始JSON数据存储（用于保存完整信息）
+    raw_data = Column(Text, nullable=True)     # 原始JSON字符串
+    
+    # 系统字段
+    received_at = Column(DateTime, default=func.now(), nullable=False)  # 接收时间
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    
+    def __repr__(self):
+        return f"<TradingViewData(symbol='{self.symbol}', timeframe='{self.timeframe}', timestamp='{self.timestamp}', close='{self.close_price}')>"
 
 # 数据库连接设置
 DATABASE_URL = os.environ.get('DATABASE_URL')

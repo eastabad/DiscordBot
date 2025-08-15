@@ -8,6 +8,7 @@ dependencies = [
     "anthropic>=0.62.0",
     "discord-py>=2.5.2",
     "flask>=3.1.1",
+    "google-genai>=1.30.0",
     "psutil>=7.0.0",
     "psycopg2-binary>=2.9.10",
     "sqlalchemy>=2.0.43",
