@@ -144,10 +144,10 @@ class ReportHandler:
                 # 更新用户请求计数
                 self.rate_limiter.record_request(user_id, username)
                 
-                # 发送私信，支持长报告分割
+                # 发送私信，使用embeds格式
                 try:
-                    full_report = f"📋 **{symbol} 分析报告**\n\n{report}"
-                    await self._send_long_message_dm(message.author, full_report)
+                    embed = self._create_report_embed(symbol, timeframe, report)
+                    await message.author.send(embed=embed)
                     await processing_msg.edit(content=f"✅ {symbol} 分析报告已发送到您的私信中")
                 except discord.Forbidden:
                     # 如果无法发送私信，直接在频道回复
@@ -201,6 +201,93 @@ class ReportHandler:
                     await user.send(chunk)
                 else:
                     await user.send(f"**续第{i+1}部分：**\n{chunk}")
+    
+    def _create_report_embed(self, symbol: str, timeframe: str, report: str) -> discord.Embed:
+        """创建Discord Embed格式的报告"""
+        try:
+            # 解析报告内容
+            sections = self._parse_report_sections(report)
+            
+            # 创建embed
+            embed = discord.Embed(
+                title=f"{symbol} 交易分析报告",
+                color=0x3498db,  # 蓝色
+                timestamp=datetime.utcnow()
+            )
+            
+            # 添加各个section作为fields
+            field_mapping = {
+                "市场概况": "📈 市场概况",
+                "关键交易信号": "🔑 关键交易信号", 
+                "趋势分析": "📉 趋势分析",
+                "投资建议": "💡 投资建议",
+                "风险提示": "⚠️ 风险提示"
+            }
+            
+            for section_key, section_title in field_mapping.items():
+                if section_key in sections and sections[section_key]:
+                    content = sections[section_key]
+                    # Discord embed field限制1024字符
+                    if len(content) > 1024:
+                        content = content[:1020] + "..."
+                    embed.add_field(
+                        name=section_title,
+                        value=content,
+                        inline=False
+                    )
+            
+            # 添加footer信息
+            embed.set_footer(text=f"时间框架: {timeframe} | 分析时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            
+            return embed
+            
+        except Exception as e:
+            # 如果解析失败，创建简单embed
+            embed = discord.Embed(
+                title=f"{symbol} 交易分析报告",
+                description=report[:2000] if len(report) > 2000 else report,
+                color=0x3498db,
+                timestamp=datetime.utcnow()
+            )
+            embed.set_footer(text=f"时间框架: {timeframe}")
+            return embed
+    
+    def _parse_report_sections(self, report: str) -> dict:
+        """解析报告中的各个section"""
+        sections = {}
+        current_section = None
+        current_content = []
+        
+        for line in report.split('\n'):
+            line = line.strip()
+            
+            # 检查是否是section标题
+            if any(keyword in line for keyword in ["市场概况", "关键交易信号", "趋势分析", "投资建议", "风险提示"]):
+                # 保存上一个section
+                if current_section and current_content:
+                    sections[current_section] = '\n'.join(current_content)
+                
+                # 开始新section
+                if "市场概况" in line:
+                    current_section = "市场概况"
+                elif "关键交易信号" in line or "关键信号" in line:
+                    current_section = "关键交易信号"
+                elif "趋势分析" in line:
+                    current_section = "趋势分析"
+                elif "投资建议" in line:
+                    current_section = "投资建议"
+                elif "风险提示" in line:
+                    current_section = "风险提示"
+                
+                current_content = []
+            elif current_section and line:
+                current_content.append(line)
+        
+        # 保存最后一个section
+        if current_section and current_content:
+            sections[current_section] = '\n'.join(current_content)
+        
+        return sections
     
     def get_example_message(self) -> str:
         """获取示例使用说明"""
