@@ -359,10 +359,12 @@ class GeminiReportGenerator:
         
         # AI 智能趋势带信号
         ai_band_signal = safe_str(raw_data.get('AIbandsignal', ''))
-        if ai_band_signal == 'green uptrend':
+        if ai_band_signal in ['green uptrend', 'blue uptrend']:
             signals.append('AI 智能趋势带: 上升趋势')
-        elif ai_band_signal == 'red downtrend':
+        elif ai_band_signal in ['red downtrend', 'pink downtrend']:
             signals.append('AI 智能趋势带: 下降趋势')
+        elif ai_band_signal == 'yellow neutral':
+            signals.append('AI 智能趋势带: 中性趋势')
         else:
             signals.append('AI 智能趋势带: 状态未知')
         
@@ -378,22 +380,24 @@ class GeminiReportGenerator:
         # Chopping Range 信号
         chopping_signal = safe_str(raw_data.get('choppingrange_signal', ''))
         if chopping_signal == 'chopping':
-            signals.append('市场处于震荡区间')
-        elif chopping_signal == 'no chopping':
-            signals.append('市场处于非震荡区间')
+            signals.append('Chopping Range: 市场处于震荡区间')
+        elif chopping_signal in ['no chopping', 'trending']:
+            signals.append('Chopping Range: 市场处于趋势状态')
         else:
             signals.append('Chopping Range: 状态未知')
         
         # Center Trend 信号
         center_trend = safe_str(raw_data.get('center_trend', ''))
-        if center_trend == 'Strong Bullish':
+        if center_trend in ['Strong Bullish']:
             signals.append('中心趋势强烈看涨')
-        elif center_trend == 'Weak Bullish':
-            signals.append('中心趋势弱看涨')
-        elif center_trend == 'Weak Bearish':
-            signals.append('中心趋势弱看跌')
+        elif center_trend in ['Bullish', 'Weak Bullish']:
+            signals.append('中心趋势看涨')
+        elif center_trend in ['Bearish', 'Weak Bearish']:
+            signals.append('中心趋势看跌')
         elif center_trend == 'Strong Bearish':
             signals.append('中心趋势强烈看跌')
+        elif center_trend == 'Neutral':
+            signals.append('中心趋势中性')
         else:
             signals.append('中心趋势: 状态未知')
         
@@ -401,12 +405,12 @@ class GeminiReportGenerator:
         wave_state = safe_str(raw_data.get('wavemarket_state', ''))
         if wave_state == 'Long Strong':
             signals.append('WaveMatrix 状态: 强烈上涨趋势')
-        elif wave_state == 'Long Weak':
-            signals.append('WaveMatrix 状态: 弱上涨趋势')
+        elif wave_state in ['Long Moderate', 'Long Weak']:
+            signals.append('WaveMatrix 状态: 温和上涨趋势')
         elif wave_state == 'Short Strong':
             signals.append('WaveMatrix 状态: 强烈下跌趋势')
-        elif wave_state == 'Short Weak':
-            signals.append('WaveMatrix 状态: 弱下跌趋势')
+        elif wave_state in ['Short Moderate', 'Short Weak']:
+            signals.append('WaveMatrix 状态: 温和下跌趋势')
         elif wave_state == 'Neutral':
             signals.append('WaveMatrix 状态: 中性')
         else:
@@ -416,12 +420,14 @@ class GeminiReportGenerator:
         ewo_trend = safe_str(raw_data.get('ewotrend_state', ''))
         if ewo_trend == 'Strong Bullish':
             signals.append('艾略特波浪趋势: 强烈上涨趋势')
-        elif ewo_trend == 'Weak Bullish':
-            signals.append('艾略特波浪趋势: 弱上涨趋势')
-        elif ewo_trend == 'Weak Bearish':
-            signals.append('艾略特波浪趋势: 弱下跌趋势')
+        elif ewo_trend in ['Bullish', 'Weak Bullish']:
+            signals.append('艾略特波浪趋势: 上涨趋势')
+        elif ewo_trend in ['Bearish', 'Weak Bearish']:
+            signals.append('艾略特波浪趋势: 下跌趋势')
         elif ewo_trend == 'Strong Bearish':
             signals.append('艾略特波浪趋势: 强烈下跌趋势')
+        elif ewo_trend == 'Neutral':
+            signals.append('艾略特波浪趋势: 中性')
         else:
             signals.append('艾略特波浪趋势: 状态未知')
         
