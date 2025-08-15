@@ -111,6 +111,10 @@ def create_tables():
 
 def get_db_session():
     """获取数据库会话"""
+    return SessionLocal()
+
+def get_db_session():
+    """获取数据库会话"""
     try:
         session = SessionLocal()
         # 测试连接

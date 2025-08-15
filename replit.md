@@ -1,6 +1,19 @@
 # Overview
 
-This project is a simplified Python-based Discord bot designed to handle three core user requests: stock chart generation, stock analysis, and image analysis. The bot focuses on providing high-quality trading insights while maintaining user request limits and automated channel cleanup. The system has been streamlined by removing the API server component to focus purely on Discord bot functionality.
+This project is an advanced Python-based Discord bot with TradingView webhook integration designed to handle four core user requests: stock chart generation, stock analysis, image analysis, and AI-powered report generation. The bot focuses on providing high-quality trading insights while maintaining user request limits and automated channel cleanup. The system now includes both Discord bot functionality and API server capabilities for receiving external data.
+
+## Recent Changes (August 15, 2025)
+
+✅ **TradingView数据接收和AI报告生成系统** - 完整的webhook到报告流程
+- 创建 `TradingViewData` 数据库模型存储TradingView推送数据
+- 实现 `tradingview_handler.py` 解析和存储webhook数据（15分钟、1小时、4小时）
+- 开发 `gemini_report_generator.py` 集成Google Gemini-2.5-pro生成AI分析报告
+- 新增 `report_handler.py` 处理report频道的股票分析请求
+- 添加API端点 `/webhook-test/TV` 和 `/webhook/tradingview` 接收TradingView数据
+- 创建 `main_with_api.py` 同时运行Discord机器人和API服务器
+- 支持report频道格式：`股票代码 时间框架`（如 `AAPL 1h`、`TSLA 15m`、`NVDA 4h`）
+- AI报告通过私信发送，包含完整技术指标分析和投资建议
+- 集成用户限制系统（每日3次）和错误处理机制
 
 ## Recent Changes (August 12, 2025)
 
@@ -96,10 +109,10 @@ Preferred communication style: Simple, everyday language.
 ## Core Architectural Decisions
 
 **Bot Architecture**:
-- Simplified design using `discord.py` commands.Bot framework.
+- Advanced design using `discord.py` commands.Bot framework with integrated API server.
 - Event-driven architecture utilizing Discord's gateway events (`on_ready`, `on_message`).
 - Asynchronous programming model with Python's `asyncio` for concurrency.
-- Pure Discord bot mode - API server component removed for simplicity.
+- Hybrid mode - Discord bot + API server for TradingView webhook integration.
 
 **Configuration Management**:
 - Centralized system prioritizing environment variables over file-based configuration.
@@ -108,8 +121,10 @@ Preferred communication style: Simple, everyday language.
 
 **Message Processing Pipeline**:
 - Listens for `@mention` events and stock commands in monitored Discord channels.
+- Monitors `report` channels for AI analysis report requests.
 - Filters bot's own messages to prevent loops.
-- Processes three core request types: stock charts, stock analysis, and image analysis.
+- Processes four core request types: stock charts, stock analysis, image analysis, and AI reports.
+- Integrates with TradingView webhook data for real-time technical analysis.
 - Maintains user request limits and provides admin management capabilities.
 
 **Error Handling Strategy**:

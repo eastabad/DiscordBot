@@ -14,6 +14,7 @@ from prediction_service import StockPredictionService
 from chart_analysis_service import ChartAnalysisService
 from channel_cleaner import ChannelCleaner
 from daily_logger import daily_logger
+from report_handler import ReportHandler
 import io
 import re
 
@@ -41,6 +42,7 @@ class DiscordBot(commands.Bot):
         self.prediction_service = StockPredictionService(config)  # 股票预测服务
         self.chart_analysis_service = ChartAnalysisService(config)  # 图表分析服务
         self.channel_cleaner = ChannelCleaner(self, config)  # 频道清理服务
+        self.report_handler = ReportHandler(self)  # 报告处理器
         self.logger = logging.getLogger(__name__)
         
     async def on_ready(self):
@@ -171,6 +173,10 @@ class DiscordBot(commands.Bot):
         elif is_monitored_channel and message.attachments and self.has_chart_image(message.attachments):
             self.logger.info(f'在监控频道中检测到图表图片，开始处理图表分析...')
             await self.handle_chart_analysis_request(message)
+        # 检查是否为report频道的报告请求
+        elif self.report_handler.is_report_request(message):
+            self.logger.info(f'在report频道中检测到分析报告请求...')
+            await self.report_handler.process_report_request(message)
         else:
             self.logger.debug(f'消息不包含提及或股票命令: {message.content[:30]}')
     

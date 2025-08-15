@@ -29,6 +29,8 @@ class DiscordAPIServer:
         self.app.router.add_post('/api/send-message', self.send_message_handler)
         self.app.router.add_post('/api/send-dm', self.send_dm_handler)
         self.app.router.add_post('/api/send-chart', self.send_chart_handler)
+        self.app.router.add_post('/webhook-test/TV', self.tradingview_webhook_handler)
+        self.app.router.add_post('/webhook/tradingview', self.tradingview_webhook_handler)
         self.app.router.add_get('/api/health', self.health_check)
         self.app.router.add_get('/', self.api_docs)
         
@@ -311,6 +313,41 @@ class DiscordAPIServer:
             self.logger.error(f'发送图表API错误: {e}')
             return web.json_response({
                 'error': str(e)
+            }, status=500)
+    
+    async def tradingview_webhook_handler(self, request):
+        """处理TradingView webhook数据"""
+        try:
+            # 导入TradingView处理器
+            from tradingview_handler import TradingViewHandler
+            
+            # 获取webhook数据
+            data = await request.json()
+            self.logger.info(f"收到TradingView webhook数据: {data}")
+            
+            # 创建处理器并处理数据
+            tv_handler = TradingViewHandler()
+            success = tv_handler.process_webhook(data)
+            
+            if success:
+                return web.json_response({
+                    'status': 'success',
+                    'message': 'TradingView数据已成功处理和存储',
+                    'timestamp': datetime.now().isoformat()
+                })
+            else:
+                return web.json_response({
+                    'status': 'error',
+                    'message': 'TradingView数据处理失败',
+                    'timestamp': datetime.now().isoformat()
+                }, status=500)
+                
+        except Exception as e:
+            self.logger.error(f'TradingView webhook处理错误: {e}')
+            return web.json_response({
+                'status': 'error',
+                'message': f'处理错误: {str(e)}',
+                'timestamp': datetime.now().isoformat()
             }, status=500)
             
     async def start_server(self, host='0.0.0.0', port=5000):

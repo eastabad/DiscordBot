@@ -15,34 +15,19 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Simple Discord Bot"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Log Web Viewer"
+args = "Discord Bot with API"
 
 [[workflows.workflow]]
-name = "Simple Discord Bot"
+name = "Discord Bot with API"
 author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python simple_bot.py"
 
 [workflows.workflow.metadata]
 outputType = "console"
 
-[[workflows.workflow]]
-name = "Log Web Viewer"
-author = "agent"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python simple_log_viewer.py"
-waitForPort = 5001
-
-[workflows.workflow.metadata]
-outputType = "webview"
+args = "python main_with_api.py"
+waitForPort = 5000
 
 [[ports]]
 localPort = 5000
