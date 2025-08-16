@@ -48,6 +48,11 @@ Preferred communication style: Simple, everyday language.
 - Features database-driven report generation using stored historical data for comprehensive analysis.
 - Generates structured AI reports with market overview, key signals, trend analysis, investment advice, risk warnings, and integrated trading insights including stop loss, take profit, and risk ratings.
 - Implements intelligent data type detection for proper categorization of signals, trades, and position closures.
+- Enhanced rating system with 5 new fields: BullishOscRating, BullishTrendRating, BearishOscRating, BearishTrendRating, Current_timeframe.
+- Intelligent rating analysis: bullishrating = BullishOscRating + BullishTrendRating, bearishrating = BearishOscRating + BearishTrendRating.
+- Automated direction determination: "Rating看涨" when bullishrating > bearishrating, "Rating看跌" otherwise.
+- 6-level trend strength classification based on rating differences (极强/很强/强/中等/弱/平衡).
+- Corrected TrendTracer time frame mappings: TrendTracersignal uses Current_timeframe, TrendTracerHTF uses adaptive_timeframe_1.
 
 **User & Admin Management**:
 - Implements a daily request limit (3 requests per user per day) using PostgreSQL.

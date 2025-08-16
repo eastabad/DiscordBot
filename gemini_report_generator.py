@@ -273,21 +273,26 @@ class GeminiReportGenerator:
         else:
             signals.append('RSI 趋势: 状态未知')
         
-        # 获取当前时间框架
-        current_timeframe = raw_data.get('timeframe', '15')
-        if current_timeframe.endswith('m'):
-            current_timeframe = current_timeframe[:-1]
+        # 获取当前时间框架 - 优先使用Current_timeframe
+        current_timeframe = raw_data.get('Current_timeframe')
+        if not current_timeframe:
+            # 回退到使用timeframe字段
+            current_timeframe = raw_data.get('timeframe', '15')
+            if current_timeframe.endswith('m'):
+                current_timeframe = current_timeframe[:-1]
+            elif current_timeframe.endswith('h'):
+                current_timeframe = str(int(current_timeframe[:-1]) * 60)
         
-        # MAtrend 信号（当前时间框架）
+        # MAtrend 信号（对应Current_timeframe的MA趋势）
         ma_trend = safe_int(raw_data.get('MAtrend'))
         if ma_trend == 1:
             signals.append(f'{current_timeframe} 分钟当前MA趋势: 上涨')
         elif ma_trend == 0:
             signals.append(f'{current_timeframe} 分钟当前MA趋势: 短线回调但未跌破 200 周期均线，观望')
         elif ma_trend == -1:
-            signals.append(f'{current_timeframe} 分钟当前趋势: 下跌')
+            signals.append(f'{current_timeframe} 分钟当前MA趋势: 下跌')
         else:
-            signals.append(f'{current_timeframe} 分钟当前趋势: 状态未知')
+            signals.append(f'{current_timeframe} 分钟当前MA趋势: 状态未知')
         
         # MAtrend_timeframe1 信号
         tf1 = safe_str(raw_data.get('adaptive_timeframe_1', '15'))
@@ -335,7 +340,7 @@ class GeminiReportGenerator:
         else:
             signals.append('动量指标: 状态未知')
         
-        # TrendTracersignal 信号
+        # TrendTracersignal 信号 (对应Current_timeframe)
         trend_tracer_signal = safe_int(raw_data.get('TrendTracersignal'))
         if trend_tracer_signal == 1:
             signals.append(f'{current_timeframe} 分钟 TrendTracer 趋势: 蓝色上涨趋势')
@@ -344,14 +349,15 @@ class GeminiReportGenerator:
         else:
             signals.append(f'{current_timeframe} 分钟 TrendTracer 趋势: 状态未知')
         
-        # TrendTracerHTF 信号
+        # TrendTracerHTF 信号 (对应adaptive_timeframe_1)
         trend_tracer_htf = safe_int(raw_data.get('TrendTracerHTF'))
+        tf1 = safe_str(raw_data.get('adaptive_timeframe_1', '60'))
         if trend_tracer_htf == 1:
-            signals.append(f'{tf2} 分钟 TrendTracer 趋势: 蓝色上涨趋势')
+            signals.append(f'{tf1} 分钟 TrendTracer HTF 趋势: 蓝色上涨趋势')
         elif trend_tracer_htf == -1:
-            signals.append(f'{tf2} 分钟 TrendTracer 趋势: 粉色下跌趋势')
+            signals.append(f'{tf1} 分钟 TrendTracer HTF 趋势: 粉色下跌趋势')
         else:
-            signals.append(f'{tf2} 分钟 TrendTracer 趋势: 状态未知')
+            signals.append(f'{tf1} 分钟 TrendTracer HTF 趋势: 状态未知')
         
         # trend_change_volatility_stop 信号
         trend_stop = raw_data.get('trend_change_volatility_stop')
@@ -449,26 +455,40 @@ class GeminiReportGenerator:
         bearish_trend = safe_float(raw_data.get('BearishTrendRating'))
         
         if all(rating is not None for rating in [bullish_osc, bullish_trend, bearish_osc, bearish_trend]):
-            # 多空力量对比分析
-            bullish_total = bullish_osc + bullish_trend
-            bearish_total = bearish_osc + bearish_trend
+            # 计算综合评级
+            bullish_rating = bullish_osc + bullish_trend
+            bearish_rating = bearish_osc + bearish_trend
             
-            if bullish_total > bearish_total:
-                strength_diff = bullish_total - bearish_total
-                if strength_diff > 30:
-                    signals.append(f'市场情绪强烈偏多 (多方力量: {bullish_total}, 空方力量: {bearish_total})')
-                else:
-                    signals.append(f'市场情绪偏多 (多方力量: {bullish_total}, 空方力量: {bearish_total})')
-            elif bearish_total > bullish_total:
-                strength_diff = bearish_total - bullish_total
-                if strength_diff > 30:
-                    signals.append(f'市场情绪强烈偏空 (空方力量: {bearish_total}, 多方力量: {bullish_total})')
-                else:
-                    signals.append(f'市场情绪偏空 (空方力量: {bearish_total}, 多方力量: {bullish_total})')
+            # 判断看涨还是看跌
+            if bullish_rating > bearish_rating:
+                rating_direction = "Rating看涨"
+                strength_diff = bullish_rating - bearish_rating
+            elif bearish_rating > bullish_rating:
+                rating_direction = "Rating看跌"
+                strength_diff = bearish_rating - bullish_rating
             else:
-                signals.append(f'多空力量基本平衡 (多方: {bullish_total}, 空方: {bearish_total})')
+                rating_direction = "Rating中性"
+                strength_diff = 0
             
-            # 震荡与趋势评级细分
+            # 根据差额确定趋势强弱
+            if strength_diff >= 40:
+                trend_strength = "极强"
+            elif strength_diff >= 30:
+                trend_strength = "很强" 
+            elif strength_diff >= 20:
+                trend_strength = "强"
+            elif strength_diff >= 10:
+                trend_strength = "中等"
+            elif strength_diff > 0:
+                trend_strength = "弱"
+            else:
+                trend_strength = "平衡"
+            
+            # 添加综合评级分析
+            signals.append(f'{rating_direction} (多方评级: {bullish_rating}, 空方评级: {bearish_rating})')
+            signals.append(f'趋势强度: {trend_strength} (差额: {strength_diff})')
+            
+            # 详细评级细分
             signals.append(f'看涨震荡评级: {bullish_osc}/100, 看涨趋势评级: {bullish_trend}/100')
             signals.append(f'看跌震荡评级: {bearish_osc}/100, 看跌趋势评级: {bearish_trend}/100')
         

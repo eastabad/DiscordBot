@@ -428,9 +428,22 @@ class TradingViewHandler:
         if data_type == 'signal':
             # 信号数据直接包含symbol
             symbol = data.get('symbol')
-            # 从adaptive_timeframe获取时间框架
-            tf1 = data.get('adaptive_timeframe_1', '15')
-            timeframe = f"{tf1}m" if tf1 != '60' else "1h"
+            # 优先使用Current_timeframe，如果没有则使用adaptive_timeframe_1
+            current_tf = data.get('Current_timeframe')
+            if current_tf:
+                tf_value = int(current_tf)
+                if tf_value == 15:
+                    timeframe = "15m"
+                elif tf_value == 60:
+                    timeframe = "1h"
+                elif tf_value == 240:
+                    timeframe = "4h"
+                else:
+                    timeframe = f"{tf_value}m"
+            else:
+                # 回退到原来的逻辑
+                tf1 = data.get('adaptive_timeframe_1', '15')
+                timeframe = f"{tf1}m" if tf1 != '60' else "1h"
             
         elif data_type in ['trade', 'close']:
             # 交易/平仓数据包含ticker
