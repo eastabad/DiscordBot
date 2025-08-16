@@ -96,12 +96,8 @@ EOF
 echo "✅ Discord Bot配置片段已生成"
 
 echo ""
-echo "⚡ 第4步: 选择部署方式..."
-echo "1. 自动添加到现有配置（推荐）"
-echo "2. 手动合并（显示配置内容让你手动添加）"
-echo "3. 创建独立配置使用8443端口"
-
-read -p "请选择部署方式 (1/2/3): " DEPLOY_METHOD
+echo "⚡ 第4步: 使用方案1 - 自动添加到现有v2ray配置..."
+DEPLOY_METHOD=1
 
 case $DEPLOY_METHOD in
     1)
