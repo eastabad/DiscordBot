@@ -7,7 +7,7 @@ import os
 import sys
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
-from models import Base, UserRequestLimit, ExemptUser, get_db_session, create_tables
+from models import Base, UserRequestLimit, ExemptUser, TradingViewData, ReportCache, get_db_session, create_tables
 
 def check_database_connection():
     """检查数据库连接"""
@@ -55,6 +55,22 @@ def check_tables_exist():
             print(f"✅ exempt_users表存在，共{count}条记录")
         except Exception as e:
             print(f"❌ exempt_users表不存在或有问题: {e}")
+            return False
+        
+        # 检查TradingView数据表
+        try:
+            count = db.query(TradingViewData).count()
+            print(f"✅ tradingview_data表存在，共{count}条记录")
+        except Exception as e:
+            print(f"❌ tradingview_data表不存在或有问题: {e}")
+            return False
+        
+        # 检查报告缓存表
+        try:
+            count = db.query(ReportCache).count()
+            print(f"✅ report_cache表存在，共{count}条记录")
+        except Exception as e:
+            print(f"❌ report_cache表不存在或有问题: {e}")
             return False
         
         db.close()
@@ -118,6 +134,24 @@ def show_database_status():
         # 豁免用户统计
         exempt_count = db.query(ExemptUser).count()
         print(f"豁免用户数: {exempt_count}")
+        
+        # TradingView数据统计
+        try:
+            tradingview_count = db.query(TradingViewData).count()
+            signal_count = db.query(TradingViewData).filter_by(data_type='signal').count()
+            trade_count = db.query(TradingViewData).filter_by(data_type='trade').count()
+            close_count = db.query(TradingViewData).filter_by(data_type='close').count()
+            print(f"TradingView数据: 总计{tradingview_count} (signal:{signal_count}, trade:{trade_count}, close:{close_count})")
+        except Exception as e:
+            print(f"TradingView数据统计失败: {e}")
+        
+        # 缓存统计
+        try:
+            cache_count = db.query(ReportCache).count()
+            valid_cache_count = db.query(ReportCache).filter_by(is_valid=True).count()
+            print(f"报告缓存: 总计{cache_count} (有效:{valid_cache_count})")
+        except Exception as e:
+            print(f"缓存数据统计失败: {e}")
         
         # 最近记录
         recent_record = db.query(UserRequestLimit).order_by(UserRequestLimit.last_request_time.desc()).first()
