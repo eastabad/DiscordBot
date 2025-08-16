@@ -96,12 +96,28 @@ class GeminiReportGenerator:
         osc_rating = raw_data.get('extras', {}).get('oscrating', '未知')
         trend_rating = raw_data.get('extras', {}).get('trendrating', '未知')
         
+        # 获取增强评级信息
+        bullish_osc = raw_data.get('BullishOscRating', '未知')
+        bullish_trend = raw_data.get('BullishTrendRating', '未知')
+        bearish_osc = raw_data.get('BearishOscRating', '未知')
+        bearish_trend = raw_data.get('BearishTrendRating', '未知')
+        
+        # 计算综合评级
+        def safe_float_calc(value):
+            try:
+                return float(value) if value != '未知' else 0
+            except:
+                return 0
+        
+        bullish_rating = safe_float_calc(bullish_osc) + safe_float_calc(bullish_trend)
+        bearish_rating = safe_float_calc(bearish_osc) + safe_float_calc(bearish_trend)
+        
         # 构建信号列表字符串
         signals_text = ','.join(signals_list) if signals_list else '暂无可用信号'
         
         # 使用正确的报告模板格式
         prompt = f"""
-生成一份针对{trading_data.symbol}的中文交易报告，格式为 Markdown，包含以下部分：
+请严格按照以下模板格式生成一份针对{trading_data.symbol}的中文交易报告，必须包含所有指定的字段和内容：
 
 ## 📈 市场概况
 简要说明市场整体状态和当前交易环境。
@@ -117,15 +133,23 @@ class GeminiReportGenerator:
 4. **买卖压力分析**：基于 CVD 的状态评估资金流向及买卖力量对比。
 
 ## 💡 投资建议
-给出基于上述分析的交易建议，并结合止损、止盈、趋势改变止损点：
-- 止损：{stop_loss}
-- 止盈：{take_profit}
+给出基于上述分析的交易建议，并结合趋势改变点，结合对比bullishrating和bearishrating的值，分析总结：
 - 趋势改变止损点：{trend_stop}
+- bullishrating：{bullish_rating} (看涨震荡评级: {bullish_osc} + 看涨趋势评级: {bullish_trend})
+- bearishrating：{bearish_rating} (看跌震荡评级: {bearish_osc} + 看跌趋势评级: {bearish_trend})
+
+基于以上评级对比分析，结合止损止盈策略：
+- 止损：{stop_loss}  
+- 止盈：{take_profit}
 
 ## ⚠️ 风险提示
-结合风险等级{risk_level}、OscRating{osc_rating}与 TrendRating{trend_rating}，提醒潜在风险因素。
+根据关键交易信号，结合趋势总结，提醒潜在风险因素。重点关注：
+- 风险等级：{risk_level}
+- 多空力量对比：bullishrating ({bullish_rating}) vs bearishrating ({bearish_rating})
+- 震荡与趋势评级差异分析
+- 其他技术指标背离风险
 
-请生成专业且详细的分析报告，确保涵盖所有技术指标的综合分析。
+请严格按照上述格式输出，确保所有字段都包含在内，特别是投资建议和风险提示部分的具体数值。
         """
         
         return prompt
@@ -653,8 +677,38 @@ class GeminiReportGenerator:
         except:
             return 'N/A'
     
+    def _extract_rating_data(self, signal_data):
+        """提取评级数据"""
+        try:
+            import json
+            raw_data = json.loads(signal_data.raw_data)
+            
+            def safe_float_calc(value):
+                try:
+                    return float(value) if value and value != '未知' else 0
+                except:
+                    return 0
+            
+            bullish_osc = raw_data.get('BullishOscRating', '未知')
+            bullish_trend = raw_data.get('BullishTrendRating', '未知')
+            bearish_osc = raw_data.get('BearishOscRating', '未知')
+            bearish_trend = raw_data.get('BearishTrendRating', '未知')
+            
+            bullish_rating = safe_float_calc(bullish_osc) + safe_float_calc(bullish_trend)
+            bearish_rating = safe_float_calc(bearish_osc) + safe_float_calc(bearish_trend)
+            
+            return bullish_rating, bearish_rating, bullish_osc, bullish_trend, bearish_osc, bearish_trend
+            
+        except Exception as e:
+            self.logger.error(f"提取评级数据失败: {e}")
+            return 0, 0, '未知', '未知', '未知', '未知'
+    
     def _build_enhanced_report_prompt(self, symbol: str, signals: list, trend_stop: str, trade_data):
         """构建增强版报告生成提示词"""
+        
+        # 从最新的signal数据中提取评级信息
+        signal_data = self._get_latest_signal_data(symbol, '15m')  # 使用15m作为默认
+        bullish_rating, bearish_rating, bullish_osc, bullish_trend, bearish_osc, bearish_trend = self._extract_rating_data(signal_data)
         
         # 基础报告模板
         base_prompt = f"""
@@ -674,11 +728,13 @@ class GeminiReportGenerator:
 4. **买卖压力分析**：基于 CVD 的状态评估资金流向及买卖力量对比。给出分析总结
 
 ## 💡 投资建议
-给出基于上述分析的交易建议，并结合趋势改变点：
+给出基于上述分析的交易建议，并结合趋势改变点，结合对比bullishrating和bearishrating的值，分析总结：
 - 趋势改变止损点：{trend_stop}
+- bullishrating：{bullish_rating} (看涨震荡评级: {bullish_osc} + 看涨趋势评级: {bullish_trend})
+- bearishrating：{bearish_rating} (看跌震荡评级: {bearish_osc} + 看跌趋势评级: {bearish_trend})
 
 ## ⚠️ 风险提示
-提醒潜在风险因素。
+根据关键交易信号，结合趋势总结，提醒潜在风险因素。
 """
         
         # 如果有交易数据，添加交易解读部分
