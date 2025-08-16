@@ -53,6 +53,7 @@ Preferred communication style: Simple, everyday language.
 - Automated direction determination: "Rating看涨" when bullishrating > bearishrating, "Rating看跌" otherwise.
 - 6-level trend strength classification based on rating differences (极强/很强/强/中等/弱/平衡).
 - Corrected TrendTracer time frame mappings: TrendTracersignal uses Current_timeframe, TrendTracerHTF uses adaptive_timeframe_1.
+- Updated AI prompt templates with enhanced investment advice format including bullishrating/bearishrating comparison and detailed risk analysis with multi-directional force evaluation.
 
 **User & Admin Management**:
 - Implements a daily request limit (3 requests per user per day) using PostgreSQL.
