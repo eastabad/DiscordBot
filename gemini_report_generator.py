@@ -740,7 +740,7 @@ class GeminiReportGenerator:
         # 格式化信号列表
         signals_text = '\n'.join(f'• {signal}' for signal in signals)
         
-        # 基础报告模板
+        # 基础报告模板 - 使用用户最后指定的格式
         base_prompt = f"""
 生成一份针对 {symbol} 的中文交易报告，格式为 Markdown，包含以下部分：
 
@@ -751,7 +751,7 @@ class GeminiReportGenerator:
 逐条列出以下原始信号，不做删改：
 {signals_text}
 
-## 📉 趋势分析
+## 📊 趋势分析
 1. **趋势总结**：基于 3 个级别的 MA 趋势、TrendTracer 两个级别，以及 AI 智能趋势带，总结市场的总体趋势方向。
 2. **当前波动分析**：结合 Heikin Ashi RSI 看涨、动量指标、中心趋势、WaveMatrix 状态、艾略特波浪趋势、RSI，进行分析总结当前波动特征进行分析。
 3. **Squeeze 与 Chopping 分析**：判断市场是否处于横盘挤压或震荡区间，并结合 PMA 与 ADX 状态，分析总结趋势强弱。
@@ -890,7 +890,7 @@ class GeminiReportGenerator:
                 self.session.rollback()
     
     def _build_trade_section(self, trade_data):
-        """构建交易解读部分"""
+        """构建交易解读部分 - 按照用户最终要求的格式"""
         try:
             action_desc = {
                 'buy': '做多',
