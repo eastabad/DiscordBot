@@ -603,8 +603,8 @@ class GeminiReportGenerator:
             # 提取趋势改变止损点
             trend_stop = self._extract_trend_stop_from_data(signal_data)
             
-            # 构建报告提示词
-            prompt = self._build_enhanced_report_prompt(symbol, signals, trend_stop, trade_data)
+            # 构建报告提示词（传入signal_data避免重复查询）
+            prompt = self._build_enhanced_report_prompt(symbol, signals, trend_stop, trade_data, signal_data)
             
             self.logger.info(f"开始生成{symbol}增强版分析报告...")
             
@@ -730,12 +730,16 @@ class GeminiReportGenerator:
             self.logger.error(f"提取评级数据失败: {e}")
             return 0, 0, '未知', '未知', '未知', '未知'
     
-    def _build_enhanced_report_prompt(self, symbol: str, signals: list, trend_stop: str, trade_data):
+    def _build_enhanced_report_prompt(self, symbol: str, signals: list, trend_stop: str, trade_data, signal_data=None):
         """构建增强版报告生成提示词"""
         
-        # 从最新的signal数据中提取评级信息
-        signal_data = self._get_latest_signal_data(symbol, '15m')  # 使用15m作为默认
-        bullish_rating, bearish_rating, bullish_osc, bullish_trend, bearish_osc, bearish_trend = self._extract_rating_data(signal_data)
+        # 从传入的signal数据中提取评级信息（避免重复查询）
+        if signal_data:
+            bullish_rating, bearish_rating, bullish_osc, bullish_trend, bearish_osc, bearish_trend = self._extract_rating_data(signal_data)
+        else:
+            # 如果没有传入signal_data，则查询最新数据
+            latest_signal = self._get_latest_signal_data(symbol, '15m')
+            bullish_rating, bearish_rating, bullish_osc, bullish_trend, bearish_osc, bearish_trend = self._extract_rating_data(latest_signal)
         
         # 格式化信号列表
         signals_text = '\n'.join(f'• {signal}' for signal in signals)
