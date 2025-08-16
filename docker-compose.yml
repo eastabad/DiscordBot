@@ -9,13 +9,14 @@ services:
       - "5000:5000"
     environment:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - CHART_IMG_API_KEY=${CHART_IMG_API_KEY}
       - LAYOUT_ID=${LAYOUT_ID}
       - TRADINGVIEW_SESSION_ID=${TRADINGVIEW_SESSION_ID}
       - TRADINGVIEW_SESSION_ID_SIGN=${TRADINGVIEW_SESSION_ID_SIGN}
       - MONITOR_CHANNEL_IDS=${MONITOR_CHANNEL_IDS}
+      - REPORT_CHANNEL_IDS=${REPORT_CHANNEL_IDS}
       - WEBHOOK_URL=${WEBHOOK_URL}
-
       - DATABASE_URL=postgresql://postgres:discord123@db:5432/discord_bot
     volumes:
       - ./daily_logs:/app/daily_logs
