@@ -900,9 +900,10 @@ class GeminiReportGenerator:
     
     def _format_simple_report(self, report_text: str, trading_data: TradingViewData) -> str:
         """简单格式化（备用方案）"""
+        eastern_date = self._get_eastern_date()
         header = f"📊 **{trading_data.symbol} 技术分析报告**\n"
         header += f"⏰ 时间框架: {trading_data.timeframe}\n"
-        header += f"📅 分析时间: {trading_data.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        header += f"📅 分析时间: {eastern_date}\n"
         header += "=" * 40 + "\n\n"
         
         return header + report_text.strip()
@@ -916,16 +917,17 @@ class GeminiReportGenerator:
         
         signals_text = '\n'.join([f"- {signal}" for signal in signals_list]) if signals_list else "- 暂无可用信号"
         
+        eastern_date = self._get_eastern_date()
         fallback_report = f"""
 📊 **{trading_data.symbol} 技术分析报告**
-🕐 数据时间: {trading_data.timestamp.strftime("%Y-%m-%d %H:%M:%S")}
+🕐 数据时间: {eastern_date}
 ⏱️ 时间框架: {trading_data.timeframe}
 
 ## 🔑 关键交易信号
 {signals_text}
 
 ## 📉 基础数据摘要
-- 数据接收时间: {trading_data.timestamp.strftime("%Y-%m-%d %H:%M:%S")}
+- 数据接收时间: {eastern_date}
 - 分析时间框架: {trading_data.timeframe}
 - 数据来源: TradingView webhook
 
