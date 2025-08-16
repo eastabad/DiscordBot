@@ -7,10 +7,12 @@ import logging
 import os
 import re
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from google import genai
 from google.genai import types
-from models import TradingViewData
+from models import TradingViewData, ReportCache
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import desc
 
 class GeminiReportGenerator:
     """Gemini AI报告生成器类"""
@@ -28,6 +30,21 @@ class GeminiReportGenerator:
         except Exception as e:
             self.logger.error(f"❌ Gemini客户端初始化失败: {e}")
             raise
+            
+        # 初始化数据库连接
+        try:
+            from sqlalchemy import create_engine
+            database_url = os.environ.get("DATABASE_URL")
+            if database_url:
+                self.engine = create_engine(database_url)
+                Session = sessionmaker(bind=self.engine)
+                self.session = Session()
+            else:
+                self.logger.warning("DATABASE_URL环境变量未设置")
+                self.session = None
+        except Exception as e:
+            self.logger.warning(f"数据库连接初始化失败: {e}")
+            self.session = None
     
     def generate_stock_report(self, trading_data: TradingViewData, user_request: str = "") -> str:
         """基于TradingView数据生成股票分析报告"""
@@ -565,7 +582,7 @@ class GeminiReportGenerator:
         return signals
     
     def generate_enhanced_report(self, symbol: str, timeframe: str) -> str:
-        """生成增强版报告 - 使用数据库中的最新数据"""
+        """生成增强版报告 - 使用数据库中的最新数据 (带缓存机制)"""
         try:
             # 从数据库获取最新的signal数据和trade/close数据
             signal_data = self._get_latest_signal_data(symbol, timeframe)
@@ -573,6 +590,12 @@ class GeminiReportGenerator:
             
             if not signal_data:
                 return f"❌ 未找到 {symbol} 的最新信号数据，无法生成报告"
+            
+            # 检查缓存是否有效
+            cached_report = self._check_report_cache(symbol, timeframe, signal_data, trade_data)
+            if cached_report:
+                self.logger.info(f"✅ 使用缓存报告: {symbol}-{timeframe}")
+                return cached_report
             
             # 从数据库解析信号
             signals = self._parse_signals_from_database(signal_data)
@@ -595,6 +618,8 @@ class GeminiReportGenerator:
             )
             
             if response and hasattr(response, 'text') and response.text:
+                # 生成成功，保存到缓存
+                self._save_report_cache(symbol, timeframe, response.text, signal_data, trade_data)
                 self.logger.info(f"✅ 成功生成{symbol}增强版分析报告，长度: {len(response.text)}")
                 return response.text
             elif response and hasattr(response, 'candidates') and response.candidates:
@@ -604,6 +629,8 @@ class GeminiReportGenerator:
                         if hasattr(content, 'parts') and content.parts:
                             for part in content.parts:
                                 if hasattr(part, 'text') and part.text:
+                                    # 生成成功，保存到缓存
+                                    self._save_report_cache(symbol, timeframe, part.text, signal_data, trade_data)
                                     self.logger.info(f"✅ 从candidates提取增强版报告，长度: {len(part.text)}")
                                     return part.text
                 
@@ -745,6 +772,122 @@ class GeminiReportGenerator:
             base_prompt += f"\n{trade_section}"
         
         return base_prompt
+    
+    def _check_report_cache(self, symbol: str, timeframe: str, signal_data, trade_data) -> Optional[str]:
+        """检查报告缓存是否有效"""
+        if not self.session:
+            return None
+            
+        try:
+            # 计算缓存过期时间（基于时间框架）
+            timeframe_minutes = {
+                '15m': 15, '1h': 60, '4h': 240, '1d': 1440
+            }
+            
+            # 获取时间框架对应的分钟数
+            minutes = timeframe_minutes.get(timeframe, 60)
+            
+            # 只有在数据更新时间范围内才查找缓存
+            cutoff_time = datetime.now() - timedelta(minutes=minutes)
+            
+            # 查找最新的有效缓存
+            cache_record = self.session.query(ReportCache).filter(
+                ReportCache.symbol == symbol,
+                ReportCache.timeframe == timeframe,
+                ReportCache.is_valid == True,
+                ReportCache.data_timestamp >= cutoff_time
+            ).order_by(desc(ReportCache.created_at)).first()
+            
+            if cache_record:
+                # 检查数据是否基于最新的signal和trade
+                signal_id = signal_data.id if signal_data else None
+                trade_id = trade_data.id if trade_data else None
+                
+                # 如果缓存基于的数据ID与当前数据ID匹配，则可以使用缓存
+                if (cache_record.based_on_signal_id == signal_id and 
+                    cache_record.based_on_trade_id == trade_id):
+                    
+                    # 更新命中次数
+                    cache_record.hit_count += 1
+                    self.session.commit()
+                    
+                    self.logger.info(f"✅ 缓存命中 {symbol}-{timeframe}, 命中次数: {cache_record.hit_count}")
+                    return cache_record.report_content
+                else:
+                    # 数据已更新，标记旧缓存为无效
+                    cache_record.is_valid = False
+                    self.session.commit()
+                    self.logger.info(f"🔄 缓存失效 {symbol}-{timeframe}, 数据已更新")
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"检查缓存失败: {e}")
+            return None
+    
+    def _save_report_cache(self, symbol: str, timeframe: str, report_content: str, signal_data, trade_data):
+        """保存报告到缓存"""
+        if not self.session:
+            return
+            
+        try:
+            # 计算过期时间
+            timeframe_minutes = {
+                '15m': 15, '1h': 60, '4h': 240, '1d': 1440
+            }
+            minutes = timeframe_minutes.get(timeframe, 60)
+            expires_at = datetime.now() + timedelta(minutes=minutes)
+            
+            # 获取数据时间戳
+            data_timestamp = signal_data.received_at if signal_data else datetime.now()
+            
+            # 创建新的缓存记录
+            cache_record = ReportCache(
+                symbol=symbol,
+                timeframe=timeframe,
+                report_content=report_content,
+                report_type='enhanced',
+                based_on_signal_id=signal_data.id if signal_data else None,
+                based_on_trade_id=trade_data.id if trade_data else None,
+                data_timestamp=data_timestamp,
+                expires_at=expires_at
+            )
+            
+            self.session.add(cache_record)
+            self.session.commit()
+            
+            self.logger.info(f"✅ 报告已缓存 {symbol}-{timeframe}, 过期时间: {expires_at}")
+            
+            # 清理旧的缓存（保留最近的5个）
+            self._cleanup_old_cache(symbol, timeframe)
+            
+        except Exception as e:
+            self.logger.error(f"保存缓存失败: {e}")
+            if self.session:
+                self.session.rollback()
+    
+    def _cleanup_old_cache(self, symbol: str, timeframe: str):
+        """清理旧的缓存记录，保留最近的5个"""
+        try:
+            # 获取该股票和时间框架的所有缓存
+            all_cache = self.session.query(ReportCache).filter(
+                ReportCache.symbol == symbol,
+                ReportCache.timeframe == timeframe
+            ).order_by(desc(ReportCache.created_at)).all()
+            
+            # 如果超过5个，删除最旧的
+            if len(all_cache) > 5:
+                old_cache = all_cache[5:]
+                for cache in old_cache:
+                    self.session.delete(cache)
+                
+                self.session.commit()
+                self.logger.info(f"🧹 清理了 {len(old_cache)} 个旧缓存 {symbol}-{timeframe}")
+                
+        except Exception as e:
+            self.logger.error(f"清理缓存失败: {e}")
+            if self.session:
+                self.session.rollback()
     
     def _build_trade_section(self, trade_data):
         """构建交易解读部分"""

@@ -4,7 +4,7 @@
 """
 import os
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, text, Text, Float
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, text, Text, Float, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
@@ -93,6 +93,36 @@ class TradingViewData(Base):
     
     def __repr__(self):
         return f"<TradingViewData {self.data_type}:{self.symbol}-{self.timeframe} at {self.received_at}>"
+
+
+class ReportCache(Base):
+    """AI报告缓存表 - 存储生成的报告以避免重复调用AI API"""
+    __tablename__ = 'report_cache'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(20), nullable=False, index=True)  # 股票代码
+    timeframe = Column(String(10), nullable=False, index=True)  # 时间框架
+    
+    # 报告内容
+    report_content = Column(Text, nullable=False)  # 完整的AI报告内容
+    report_type = Column(String(20), default='enhanced', nullable=False)  # 报告类型
+    
+    # 数据版本控制
+    based_on_signal_id = Column(Integer, nullable=True)  # 基于哪个signal数据生成
+    based_on_trade_id = Column(Integer, nullable=True)   # 基于哪个trade数据生成
+    data_timestamp = Column(DateTime, nullable=False, index=True)  # 数据时间戳
+    
+    # 缓存状态
+    is_valid = Column(Boolean, default=True, nullable=False)  # 缓存是否有效
+    hit_count = Column(Integer, default=1, nullable=False)  # 命中次数
+    
+    # 系统字段
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    expires_at = Column(DateTime, nullable=True, index=True)  # 缓存过期时间
+    
+    def __repr__(self):
+        return f"<ReportCache {self.symbol}-{self.timeframe} hits:{self.hit_count} valid:{self.is_valid}>"
     
     def to_dict(self):
         """转换为字典格式"""
