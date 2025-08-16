@@ -68,6 +68,13 @@ class TradingViewData(Base):
     trend_rating = Column(Float, nullable=True)
     risk_level = Column(Integer, nullable=True)
     
+    # 新增的5个评级字段 (支持signal和trade类型)
+    bullish_osc_rating = Column(Float, nullable=True)
+    bullish_trend_rating = Column(Float, nullable=True)
+    bearish_osc_rating = Column(Float, nullable=True)
+    bearish_trend_rating = Column(Float, nullable=True)
+    current_timeframe = Column(String(10), nullable=True)
+    
     # 触发指标信息 (仅trade类型使用)
     trigger_indicator = Column(String(100), nullable=True)
     trigger_timeframe = Column(String(10), nullable=True)
@@ -103,6 +110,11 @@ class TradingViewData(Base):
             'risk_level': self.risk_level,
             'trigger_indicator': self.trigger_indicator,
             'trigger_timeframe': self.trigger_timeframe,
+            'bullish_osc_rating': self.bullish_osc_rating,
+            'bullish_trend_rating': self.bullish_trend_rating,
+            'bearish_osc_rating': self.bearish_osc_rating,
+            'bearish_trend_rating': self.bearish_trend_rating,
+            'current_timeframe': self.current_timeframe,
             'received_at': self.received_at.isoformat() if self.received_at else None,
             'processed_at': self.processed_at.isoformat() if self.processed_at else None
         }

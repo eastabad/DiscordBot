@@ -442,7 +442,37 @@ class GeminiReportGenerator:
         else:
             signals.append('高时间框架波浪信号: 状态未知')
         
-        # OscRating 和 TrendRating 比较
+        # 增强评级系统分析 (新增5个字段)
+        bullish_osc = safe_float(raw_data.get('BullishOscRating'))
+        bullish_trend = safe_float(raw_data.get('BullishTrendRating'))
+        bearish_osc = safe_float(raw_data.get('BearishOscRating'))
+        bearish_trend = safe_float(raw_data.get('BearishTrendRating'))
+        
+        if all(rating is not None for rating in [bullish_osc, bullish_trend, bearish_osc, bearish_trend]):
+            # 多空力量对比分析
+            bullish_total = bullish_osc + bullish_trend
+            bearish_total = bearish_osc + bearish_trend
+            
+            if bullish_total > bearish_total:
+                strength_diff = bullish_total - bearish_total
+                if strength_diff > 30:
+                    signals.append(f'市场情绪强烈偏多 (多方力量: {bullish_total}, 空方力量: {bearish_total})')
+                else:
+                    signals.append(f'市场情绪偏多 (多方力量: {bullish_total}, 空方力量: {bearish_total})')
+            elif bearish_total > bullish_total:
+                strength_diff = bearish_total - bullish_total
+                if strength_diff > 30:
+                    signals.append(f'市场情绪强烈偏空 (空方力量: {bearish_total}, 多方力量: {bullish_total})')
+                else:
+                    signals.append(f'市场情绪偏空 (空方力量: {bearish_total}, 多方力量: {bullish_total})')
+            else:
+                signals.append(f'多空力量基本平衡 (多方: {bullish_total}, 空方: {bearish_total})')
+            
+            # 震荡与趋势评级细分
+            signals.append(f'看涨震荡评级: {bullish_osc}/100, 看涨趋势评级: {bullish_trend}/100')
+            signals.append(f'看跌震荡评级: {bearish_osc}/100, 看跌趋势评级: {bearish_trend}/100')
+        
+        # 传统OscRating 和 TrendRating 比较
         extras = raw_data.get('extras', {})
         osc_rating = safe_float(extras.get('oscrating'))
         trend_rating = safe_float(extras.get('trendrating'))

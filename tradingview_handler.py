@@ -385,7 +385,9 @@ class TradingViewHandler:
                 self._extract_trade_fields(tv_data, raw_payload)
             elif data_type == 'close':
                 self._extract_close_fields(tv_data, raw_payload)
-            # signal类型只需要基本字段
+            
+            # 所有数据类型都提取新增的评级字段
+            self._extract_rating_fields(tv_data, raw_payload)
             
             session.add(tv_data)
             session.commit()
@@ -473,6 +475,15 @@ class TradingViewHandler:
             tv_data.trigger_timeframe = extras.get('timeframe')
         
         # 平仓通常不需要止盈止损信息
+    
+    def _extract_rating_fields(self, tv_data, data: Dict):
+        """提取新增的5个评级字段 - 适用于所有数据类型"""
+        # 提取新增的评级字段
+        tv_data.bullish_osc_rating = self._safe_float(data.get('BullishOscRating'))
+        tv_data.bullish_trend_rating = self._safe_float(data.get('BullishTrendRating'))
+        tv_data.bearish_osc_rating = self._safe_float(data.get('BearishOscRating'))
+        tv_data.bearish_trend_rating = self._safe_float(data.get('BearishTrendRating'))
+        tv_data.current_timeframe = data.get('Current_timeframe')
     
     def save_to_database(self, parsed_data: Dict[str, Any]) -> bool:
         """保存数据到数据库"""
