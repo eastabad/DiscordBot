@@ -10,19 +10,15 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# 获取当前日期时间作为备份后缀
-BACKUP_SUFFIX=$(date +%Y%m%d_%H%M%S)
-
-echo "📁 第1步: 备份现有nginx配置..."
+echo "📁 第1步: 检查现有nginx配置（不做任何修改）..."
 if [ -f "/etc/nginx/sites-available/default" ]; then
-    cp /etc/nginx/sites-available/default /etc/nginx/sites-available/default.backup.$BACKUP_SUFFIX
-    echo "✅ 默认配置已备份为: default.backup.$BACKUP_SUFFIX"
+    echo "✅ 发现现有nginx配置，将保持完全不变"
 else
-    echo "⚠️  未找到默认nginx配置文件"
+    echo "⚠️  未发现现有nginx配置，这是个全新的nginx安装"
 fi
 
 echo ""
-echo "📝 第2步: 创建Discord Bot nginx配置..."
+echo "📝 第2步: 创建全新的Discord Bot nginx配置（不修改现有配置）..."
 
 # 创建nginx配置文件
 cat > /etc/nginx/sites-available/tdindicator.top << 'EOF'
@@ -117,12 +113,13 @@ server {
 }
 EOF
 
-echo "✅ nginx配置文件已创建: /etc/nginx/sites-available/tdindicator.top"
+echo "✅ 新的nginx配置文件已创建: /etc/nginx/sites-available/tdindicator.top"
+echo "   （你的现有配置完全未被修改）"
 
 echo ""
-echo "⚡ 第3步: 激活配置..."
+echo "⚡ 第3步: 激活新配置（与现有配置并行运行）..."
 ln -sf /etc/nginx/sites-available/tdindicator.top /etc/nginx/sites-enabled/
-echo "✅ 配置已激活"
+echo "✅ Discord Bot配置已激活，与你的现有网站并行运行"
 
 echo ""
 echo "🧪 第4步: 测试nginx配置..."
@@ -164,8 +161,12 @@ echo "🧪 测试命令："
 echo "   curl https://www.tdindicator.top/bot-status"
 echo ""
 echo "⚠️  重要提醒："
-echo "   1. 确保你的Discord Bot在端口5000上运行"
-echo "   2. 如果遇到问题，检查错误日志: sudo tail -f /var/log/nginx/error.log"
-echo "   3. 这个配置保持你现有网站功能不变，只是添加了Bot的API端点"
+echo "   1. 你的现有网站配置完全未被修改，继续正常运行"
+echo "   2. 确保你的Discord Bot在端口5000上运行"
+echo "   3. 如果遇到问题，检查错误日志: sudo tail -f /var/log/nginx/error.log"
+echo "   4. 如需完全移除Discord Bot配置："
+echo "      sudo rm /etc/nginx/sites-enabled/tdindicator.top"
+echo "      sudo rm /etc/nginx/sites-available/tdindicator.top"
+echo "      sudo systemctl reload nginx"
 echo ""
 echo "🚀 现在你可以启动Discord Bot了！"
