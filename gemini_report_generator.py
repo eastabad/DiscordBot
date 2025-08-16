@@ -740,7 +740,7 @@ class GeminiReportGenerator:
         # 格式化信号列表
         signals_text = '\n'.join(f'• {signal}' for signal in signals)
         
-        # 基础报告模板 - 使用用户最后指定的格式
+        # 基础报告模板 - 完全按照用户最终指定的格式
         base_prompt = f"""
 生成一份针对 {symbol} 的中文交易报告，格式为 Markdown，包含以下部分：
 
@@ -751,7 +751,7 @@ class GeminiReportGenerator:
 逐条列出以下原始信号，不做删改：
 {signals_text}
 
-## 📊 趋势分析
+## 📉 趋势分析
 1. **趋势总结**：基于 3 个级别的 MA 趋势、TrendTracer 两个级别，以及 AI 智能趋势带，总结市场的总体趋势方向。
 2. **当前波动分析**：结合 Heikin Ashi RSI 看涨、动量指标、中心趋势、WaveMatrix 状态、艾略特波浪趋势、RSI，进行分析总结当前波动特征进行分析。
 3. **Squeeze 与 Chopping 分析**：判断市场是否处于横盘挤压或震荡区间，并结合 PMA 与 ADX 状态，分析总结趋势强弱。
@@ -899,13 +899,29 @@ class GeminiReportGenerator:
             
             action_text = action_desc.get(trade_data.action, trade_data.action)
             
+            # 提取交易相关数据
+            try:
+                import json
+                raw_data = json.loads(trade_data.raw_data)
+                stop_loss = raw_data.get('stopLoss', {}).get('stopPrice', 'N/A')
+                take_profit = raw_data.get('takeProfit', {}).get('limitPrice', 'N/A')
+                risk_level = raw_data.get('extras', {}).get('risk', 'N/A')
+                osc_rating = raw_data.get('extras', {}).get('oscrating', 'N/A')
+                trend_rating = raw_data.get('extras', {}).get('trendrating', 'N/A')
+            except:
+                stop_loss = 'N/A'
+                take_profit = 'N/A'
+                risk_level = 'N/A'
+                osc_rating = 'N/A'
+                trend_rating = 'N/A'
+
             section = f"""
 
 ## 📊TDindicator Bot 交易解读：
 **交易方向：{action_text}**
-- **止损：{trade_data.stop_loss_price or 'N/A'}**
-- **止盈：{trade_data.take_profit_price or 'N/A'}**
-结合风险等级{trade_data.risk_level or 'N/A'}、OscRating{trade_data.osc_rating or 'N/A'}与 TrendRating{trade_data.trend_rating or 'N/A'}；
+- **止损：{stop_loss}**
+- **止盈：{take_profit}**
+结合风险等级{risk_level}、OscRating{osc_rating}与 TrendRating{trend_rating}；
 说明：这是bot交易的最后一笔，结合总体趋势，对该交易用3-4句话做出简短的分析和评价。"""
             
             return section
