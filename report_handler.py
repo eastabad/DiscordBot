@@ -7,6 +7,7 @@ import logging
 from typing import Optional, Tuple
 from datetime import datetime
 import discord
+import pytz
 from tradingview_handler import TradingViewHandler
 from gemini_report_generator import GeminiReportGenerator
 from rate_limiter import RateLimiter
@@ -234,7 +235,8 @@ class ReportHandler:
                     )
             
             # 添加footer信息
-            embed.set_footer(text=f"时间框架: {timeframe} | 分析时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            eastern_time = self._get_eastern_time()
+            embed.set_footer(text=f"时间框架: {timeframe} | 分析时间: {eastern_time}")
             
             return embed
             
@@ -285,6 +287,16 @@ class ReportHandler:
             sections[current_section] = '\n'.join(current_content)
         
         return sections
+    
+    def _get_eastern_time(self) -> str:
+        """获取美国东部时间"""
+        try:
+            eastern = pytz.timezone('America/New_York')
+            eastern_time = datetime.now(eastern)
+            return eastern_time.strftime('%Y-%m-%d %H:%M (美国东部时间)')
+        except Exception:
+            # 回退到UTC时间
+            return datetime.now().strftime('%Y-%m-%d %H:%M (UTC时间)')
     
     def get_example_message(self) -> str:
         """获取示例使用说明"""

@@ -79,16 +79,22 @@
 ## ✅ 修复完成状态
 
 ### 时间格式修复点
-1. **`_format_simple_report()`**: 备用报告格式 ✅
-2. **`_generate_fallback_report()`**: 降级报告格式 ✅ 
-3. **`_format_report()`**: 主要报告格式 ✅
-4. **`_get_eastern_date()`**: 核心时间函数 ✅
+1. **`gemini_report_generator.py`**:
+   - `_format_simple_report()`: 备用报告格式 ✅
+   - `_generate_fallback_report()`: 降级报告格式 ✅ 
+   - `_format_report()`: 主要报告格式 ✅
+   - `_get_eastern_date()`: 核心时间函数 ✅
+
+2. **`report_handler.py`**:
+   - `create_embed()`: Discord embed footer时间 ✅
+   - `_get_eastern_time()`: 新增美东时间方法 ✅
 
 ### 验证结果
-- ✅ **时间格式**: `2025-08-15 21:12 (美国东部时间)`
+- ✅ **时间格式**: `2025-08-15 21:29 (美国东部时间)`
 - ✅ **时区处理**: 自动检测EDT/EST
 - ✅ **格式统一**: 所有报告使用相同时间格式
 - ✅ **回退机制**: UTC时间安全回退
+- ✅ **Discord Footer**: "时间框架: 15m | 分析时间: 2025-08-15 21:29 (美国东部时间)"
 
 ## ✅ 预期效果
 
