@@ -771,7 +771,7 @@ class GeminiReportGenerator:
 - **止损：{trade_data.stop_loss_price or 'N/A'}**
 - **止盈：{trade_data.take_profit_price or 'N/A'}**
 结合风险等级{trade_data.risk_level or 'N/A'}、OscRating{trade_data.osc_rating or 'N/A'}与 TrendRating{trade_data.trend_rating or 'N/A'}；
-说明：这是bot交易的最后一笔，结合总体趋势对该交易做出简短的分析和评价。"""
+说明：这是bot交易的最后一笔，结合总体趋势对该交易做出简短的分析和评价（限制在3-4句话内，总结性陈述，不要太长）。"""
             
             elif trade_data.data_type == 'close':
                 # 平仓信息
@@ -779,7 +779,7 @@ class GeminiReportGenerator:
                 section += f"""
 - **平仓类型：{close_type}**
 - **触发指标：{trade_data.trigger_indicator or 'N/A'}**
-说明：这是bot的最新平仓操作，基于{trade_data.trigger_indicator}指标触发，结合当前趋势分析该平仓决策的合理性。"""
+说明：这是bot的最新平仓操作，基于{trade_data.trigger_indicator}指标触发，结合当前趋势分析该平仓决策的合理性（限制在3-4句话内，总结性陈述）。"""
             
             return section
             
@@ -840,10 +840,10 @@ class GeminiReportGenerator:
             eastern = pytz.timezone('America/New_York')
             # 转换为美东时间
             eastern_time = datetime.now(eastern)
-            return eastern_time.strftime('%Y年%m月%d日 (美东时间)')
+            return eastern_time.strftime('%Y-%m-%d %H:%M (美国东部时间)')
         except:
             # 回退到UTC时间
-            return datetime.now().strftime('%Y年%m月%d日 (UTC时间)')
+            return datetime.now().strftime('%Y-%m-%d %H:%M (UTC时间)')
     
     def _extract_and_update_title(self, markdown_text: str, eastern_date: str) -> str:
         """提取标题并替换日期为当前美东时间"""
@@ -852,6 +852,7 @@ class GeminiReportGenerator:
         
         # 替换日期部分为当前美东时间
         title = re.sub(r'\(\d{4}年\d{1,2}月\d{1,2}日.*?\)', f'({eastern_date})', title)
+        title = re.sub(r'\(\d{4}-\d{1,2}-\d{1,2}.*?\)', f'({eastern_date})', title)
         return title
     
     def _highlight_prices(self, text: str) -> str:

@@ -54,6 +54,7 @@ Preferred communication style: Simple, everyday language.
 - 6-level trend strength classification based on rating differences (极强/很强/强/中等/弱/平衡).
 - Corrected TrendTracer time frame mappings: TrendTracersignal uses Current_timeframe, TrendTracerHTF uses adaptive_timeframe_1.
 - Updated AI prompt templates with enhanced investment advice format including bullishrating/bearishrating comparison and detailed risk analysis with multi-directional force evaluation.
+- Enhanced trading analysis section with length constraints (3-4 sentences, concise summary statements) and updated time display to US Eastern Time format.
 
 **User & Admin Management**:
 - Implements a daily request limit (3 requests per user per day) using PostgreSQL.
