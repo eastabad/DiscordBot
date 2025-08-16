@@ -710,6 +710,9 @@ class GeminiReportGenerator:
         signal_data = self._get_latest_signal_data(symbol, '15m')  # 使用15m作为默认
         bullish_rating, bearish_rating, bullish_osc, bullish_trend, bearish_osc, bearish_trend = self._extract_rating_data(signal_data)
         
+        # 格式化信号列表
+        signals_text = '\n'.join(f'• {signal}' for signal in signals)
+        
         # 基础报告模板
         base_prompt = f"""
 生成一份针对 {symbol} 的中文交易报告，格式为 Markdown，包含以下部分：
@@ -719,7 +722,7 @@ class GeminiReportGenerator:
 
 ## 🔑 关键交易信号
 逐条列出以下原始信号，不做删改：
-{chr(10).join(f'• {signal}' for signal in signals)}
+{signals_text}
 
 ## 📉 趋势分析
 1. **趋势总结**：基于 3 个级别的 MA 趋势、TrendTracer 两个级别，以及 AI 智能趋势带，总结市场的总体趋势方向。
@@ -734,8 +737,7 @@ class GeminiReportGenerator:
 - bearishrating：{bearish_rating} (看跌震荡评级: {bearish_osc} + 看跌趋势评级: {bearish_trend})
 
 ## ⚠️ 风险提示
-根据关键交易信号，结合趋势总结，提醒潜在风险因素。
-"""
+根据关键交易信号，结合趋势总结，提醒潜在风险因素。"""
         
         # 如果有交易数据，添加交易解读部分
         if trade_data:
@@ -752,34 +754,16 @@ class GeminiReportGenerator:
                 'sell': '做空'
             }
             
-            data_type_desc = {
-                'trade': '开仓交易',
-                'close': '平仓操作'
-            }
-            
             action_text = action_desc.get(trade_data.action, trade_data.action)
-            type_text = data_type_desc.get(trade_data.data_type, '交易')
             
             section = f"""
+
 ## 📊TDindicator Bot 交易解读：
-**交易类型：{type_text}**
-**交易方向：{action_text}**"""
-            
-            if trade_data.data_type == 'trade':
-                # 完整交易信息
-                section += f"""
+**交易方向：{action_text}**
 - **止损：{trade_data.stop_loss_price or 'N/A'}**
 - **止盈：{trade_data.take_profit_price or 'N/A'}**
 结合风险等级{trade_data.risk_level or 'N/A'}、OscRating{trade_data.osc_rating or 'N/A'}与 TrendRating{trade_data.trend_rating or 'N/A'}；
-说明：这是bot交易的最后一笔，结合总体趋势对该交易做出简短的分析和评价（限制在3-4句话内，总结性陈述，不要太长）。"""
-            
-            elif trade_data.data_type == 'close':
-                # 平仓信息
-                close_type = "平仓多头" if trade_data.action == 'sell' else "平仓空头"
-                section += f"""
-- **平仓类型：{close_type}**
-- **触发指标：{trade_data.trigger_indicator or 'N/A'}**
-说明：这是bot的最新平仓操作，基于{trade_data.trigger_indicator}指标触发，结合当前趋势分析该平仓决策的合理性（限制在3-4句话内，总结性陈述）。"""
+说明：这是bot交易的最后一笔，结合总体趋势，对该交易用3-4句话做出简短的分析和评价。"""
             
             return section
             
