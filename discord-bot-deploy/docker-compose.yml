@@ -15,6 +15,7 @@ services:
       - TRADINGVIEW_SESSION_ID_SIGN=${TRADINGVIEW_SESSION_ID_SIGN}
       - MONITOR_CHANNEL_IDS=${MONITOR_CHANNEL_IDS}
       - WEBHOOK_URL=${WEBHOOK_URL}
+
       - DATABASE_URL=postgresql://postgres:discord123@db:5432/discord_bot
     volumes:
       - ./daily_logs:/app/daily_logs
@@ -41,6 +42,7 @@ services:
       - POSTGRES_PASSWORD=discord123
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker-db-init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     networks:

@@ -1,10 +1,10 @@
 """
 数据库模型定义
-用于跟踪用户每日请求限制和使用统计
+用于跟踪用户每日请求限制和使用统计，以及TradingView数据存储
 """
 import os
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, text, Text, Float, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
@@ -43,10 +43,138 @@ class ExemptUser(Base):
     def __repr__(self):
         return f"<ExemptUser(user_id='{self.user_id}', username='{self.username}', reason='{self.reason}')>"
 
+
+class TradingViewData(Base):
+    """TradingView webhook数据存储 - 增强版支持3种数据类型"""
+    __tablename__ = 'tradingview_data'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(20), nullable=False, index=True)  # 股票代码，如 AAPL
+    timeframe = Column(String(10), nullable=False, index=True)  # 时间框架，如 15m, 1h, 4h
+    
+    # 数据类型标记: 'signal', 'trade', 'close'
+    data_type = Column(String(10), nullable=False, index=True)
+    
+    # 交易相关字段 (仅trade和close类型使用)
+    action = Column(String(10), nullable=True)  # 'buy', 'sell', 'close'
+    quantity = Column(Float, nullable=True)
+    
+    # 止盈止损价格 (仅trade类型使用)
+    take_profit_price = Column(Float, nullable=True)
+    stop_loss_price = Column(Float, nullable=True)
+    
+    # 风险评级和指标评级 (仅trade类型使用)
+    osc_rating = Column(Float, nullable=True)
+    trend_rating = Column(Float, nullable=True)
+    risk_level = Column(Integer, nullable=True)
+    
+    # 新增的5个评级字段 (支持signal和trade类型)
+    bullish_osc_rating = Column(Float, nullable=True)
+    bullish_trend_rating = Column(Float, nullable=True)
+    bearish_osc_rating = Column(Float, nullable=True)
+    bearish_trend_rating = Column(Float, nullable=True)
+    current_timeframe = Column(String(10), nullable=True)
+    
+    # 触发指标信息 (仅trade类型使用)
+    trigger_indicator = Column(String(100), nullable=True)
+    trigger_timeframe = Column(String(10), nullable=True)
+    
+    # 原始JSON数据存储（用于保存完整信息）
+    raw_data = Column(Text, nullable=False)  # 原始JSON字符串
+    
+    # 解析后的信号数据 (JSON格式存储)
+    parsed_signals = Column(Text, nullable=True)  # 解析后的信号列表JSON
+    
+    # 系统字段
+    received_at = Column(DateTime, default=func.now(), nullable=False, index=True)  # 接收时间
+    processed_at = Column(DateTime, nullable=True)  # 处理时间
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    
+    def __repr__(self):
+        return f"<TradingViewData {self.data_type}:{self.symbol}-{self.timeframe} at {self.received_at}>"
+
+
+class ReportCache(Base):
+    """AI报告缓存表 - 存储生成的报告以避免重复调用AI API"""
+    __tablename__ = 'report_cache'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(20), nullable=False, index=True)  # 股票代码
+    timeframe = Column(String(10), nullable=False, index=True)  # 时间框架
+    
+    # 报告内容
+    report_content = Column(Text, nullable=False)  # 完整的AI报告内容
+    report_type = Column(String(20), default='enhanced', nullable=False)  # 报告类型
+    
+    # 数据版本控制
+    based_on_signal_id = Column(Integer, nullable=True)  # 基于哪个signal数据生成
+    based_on_trade_id = Column(Integer, nullable=True)   # 基于哪个trade数据生成
+    data_timestamp = Column(DateTime, nullable=False, index=True)  # 数据时间戳
+    
+    # 缓存状态
+    is_valid = Column(Boolean, default=True, nullable=False)  # 缓存是否有效
+    hit_count = Column(Integer, default=1, nullable=False)  # 命中次数
+    
+    # 系统字段
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    expires_at = Column(DateTime, nullable=True, index=True)  # 缓存过期时间
+    
+    def __repr__(self):
+        return f"<ReportCache {self.symbol}-{self.timeframe} hits:{self.hit_count} valid:{self.is_valid}>"
+    
+    def to_dict(self):
+        """转换为字典格式"""
+        return {
+            'id': self.id,
+            'symbol': self.symbol,
+            'timeframe': self.timeframe,
+            'data_type': self.data_type,
+            'action': self.action,
+            'quantity': self.quantity,
+            'take_profit_price': self.take_profit_price,
+            'stop_loss_price': self.stop_loss_price,
+            'osc_rating': self.osc_rating,
+            'trend_rating': self.trend_rating,
+            'risk_level': self.risk_level,
+            'trigger_indicator': self.trigger_indicator,
+            'trigger_timeframe': self.trigger_timeframe,
+            'bullish_osc_rating': self.bullish_osc_rating,
+            'bullish_trend_rating': self.bullish_trend_rating,
+            'bearish_osc_rating': self.bearish_osc_rating,
+            'bearish_trend_rating': self.bearish_trend_rating,
+            'current_timeframe': self.current_timeframe,
+            'received_at': self.received_at.isoformat() if self.received_at else None,
+            'processed_at': self.processed_at.isoformat() if self.processed_at else None
+        }
+
 # 数据库连接设置
 DATABASE_URL = os.environ.get('DATABASE_URL')
-engine = create_engine(DATABASE_URL, echo=False)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL环境变量未设置，用户限制功能将无法工作")
+
+try:
+    # 创建引擎，添加连接池配置
+    engine = create_engine(
+        DATABASE_URL, 
+        echo=False,
+        pool_pre_ping=True,  # 验证连接有效性
+        pool_recycle=300,    # 5分钟回收连接
+        connect_args={"connect_timeout": 10}  # 10秒连接超时
+    )
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    
+    # 测试数据库连接
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    print("✅ 数据库连接成功")
+    
+except Exception as e:
+    print(f"❌ 数据库连接失败: {e}")
+    print(f"DATABASE_URL: {DATABASE_URL}")
+    raise
 
 def create_tables():
     """创建数据库表"""
@@ -56,6 +184,17 @@ def create_tables():
 def get_db_session():
     """获取数据库会话"""
     return SessionLocal()
+
+def get_db_session():
+    """获取数据库会话"""
+    try:
+        session = SessionLocal()
+        # 测试连接
+        session.execute(text("SELECT 1"))
+        return session
+    except Exception as e:
+        print(f"❌ 获取数据库会话失败: {e}")
+        raise
 
 if __name__ == "__main__":
     # 创建表

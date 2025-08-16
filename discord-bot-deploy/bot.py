@@ -14,6 +14,7 @@ from prediction_service import StockPredictionService
 from chart_analysis_service import ChartAnalysisService
 from channel_cleaner import ChannelCleaner
 from daily_logger import daily_logger
+from report_handler import ReportHandler
 import io
 import re
 
@@ -41,6 +42,7 @@ class DiscordBot(commands.Bot):
         self.prediction_service = StockPredictionService(config)  # 股票预测服务
         self.chart_analysis_service = ChartAnalysisService(config)  # 图表分析服务
         self.channel_cleaner = ChannelCleaner(self, config)  # 频道清理服务
+        self.report_handler = ReportHandler(self)  # 报告处理器
         self.logger = logging.getLogger(__name__)
         
     async def on_ready(self):
@@ -51,6 +53,23 @@ class DiscordBot(commands.Bot):
             
             # 输出机器人的意图信息用于调试
             self.logger.info(f'机器人意图: message_content={self.intents.message_content}, messages={self.intents.messages}, guild_messages={self.intents.guild_messages}')
+        
+        # 初始化数据库表
+        try:
+            import os
+            from models import create_tables
+            create_tables()
+            self.logger.info("✅ 数据库表初始化完成")
+            
+            # 测试用户限制功能
+            from rate_limiter import RateLimiter
+            test_rate_limiter = RateLimiter()
+            self.logger.info("✅ 用户限制功能验证完成")
+            
+        except Exception as e:
+            self.logger.error(f"❌ 数据库初始化失败: {e}")
+            self.logger.error(f"DATABASE_URL: {os.environ.get('DATABASE_URL', 'NOT_SET')}")
+            self.logger.error("用户限制功能可能无法正常工作")
         
         # 设置机器人状态
         await self.change_presence(
@@ -65,6 +84,12 @@ class DiscordBot(commands.Bot):
             self.logger.info(f'监控频道IDs: {", ".join(self.config.monitor_channel_ids)}')
         else:
             self.logger.warning('未设置监控频道ID')
+        
+        # 输出report频道信息
+        if hasattr(self.config, 'report_channel_ids') and self.config.report_channel_ids:
+            self.logger.info(f'Report频道IDs: {", ".join(self.config.report_channel_ids)}')
+        else:
+            self.logger.info('Report频道: 未配置ID，将监控所有名为"report"的频道')
         
         # 启动频道清理服务
         await self.channel_cleaner.start_daily_cleanup()
@@ -98,36 +123,46 @@ class DiscordBot(commands.Bot):
             str(message.channel.id) in self.config.monitor_channel_ids
         )
         
-        # 检查命令（包括管理员命令） - 优先级最高
-        if '!' in message.content:
-            # 检查是否包含命令
-            content_parts = message.content.split()
-            for part in content_parts:
-                if part.startswith('!'):
-                    command_name = part[1:]  # 移除!前缀
-                    self.logger.info(f'检测到命令: {part}')
-                    
-                    # 直接调用相应的命令处理函数
-                    if command_name == 'cleanup_now':
-                        await self.manual_cleanup_command_direct(message)
-                        return
-                    elif command_name == 'cleanup_status':
-                        await self.cleanup_status_command_direct(message)
-                        return
-                    elif command_name == 'cleanup_channel':
-                        await self.cleanup_specific_channel_direct(message)
-                        return
-                    elif command_name == 'help_admin':
-                        await self.help_admin_command_direct(message)
-                        return
-                    else:
-                        # 对于其他命令，使用正常的命令处理
-                        await self.process_commands(message)
-                        return
+        # 检查是否在report频道中
+        is_report_channel = self.is_report_channel(message.channel)
         
-        if is_mentioned and is_monitored_channel and self.has_stock_command(message.content):
+        # 检查命令（包括管理员命令） - 优先级最高
+        if message.content.startswith('!'):
+            command_name = message.content.split()[0][1:]  # 移除!前缀
+            self.logger.info(f'检测到命令: !{command_name}')
+            
+            # 管理员命令优先处理
+            if self.has_admin_command(message.content):
+                await self.handle_admin_command(message)
+                return
+            
+            # 其他特殊命令
+            if command_name == 'cleanup_now':
+                await self.manual_cleanup_command_direct(message)
+                return
+            elif command_name == 'cleanup_status':
+                await self.cleanup_status_command_direct(message)
+                return
+            elif command_name == 'cleanup_channel':
+                await self.cleanup_specific_channel_direct(message)
+                return
+            elif command_name == 'help_admin':
+                await self.help_admin_command_direct(message)
+                return
+            else:
+                # 其他commands框架命令
+                await self.process_commands(message)
+                return
+        
+        # 优先处理report频道的请求 - 专门生成AI报告
+        if is_report_channel and not message.author.bot:
+            self.logger.info(f'在report频道 #{message.channel.name} 中检测到分析报告请求...')
+            await self.report_handler.process_report_request(message)
+        # 监控频道的@提及股票命令 - 生成图表
+        elif is_mentioned and is_monitored_channel and self.has_stock_command(message.content):
             self.logger.info(f'在监控频道中检测到提及和股票命令，开始处理股票图表请求...')
             await self.handle_chart_request(message)
+        # 其他@提及处理
         elif is_mentioned:
             # 检查是否有图片附件需要分析
             if message.attachments and self.has_chart_image(message.attachments):
@@ -137,13 +172,14 @@ class DiscordBot(commands.Bot):
             elif self.has_prediction_command(message.content):
                 self.logger.info(f'检测到预测请求，开始处理股票预测...')
                 await self.handle_prediction_request(message)
-            # 检查是否是股票命令（在非监控频道中也支持@提及方式）
-            elif self.has_stock_command(message.content):
+            # 检查是否是股票命令（在非监控/非report频道中也支持@提及方式）
+            elif self.has_stock_command(message.content) and not is_report_channel:
                 self.logger.info(f'检测到@提及的股票命令，开始处理股票图表请求...')
                 await self.handle_chart_request(message)
             else:
                 self.logger.info(f'检测到@提及，开始处理webhook转发...')
                 await self.handle_mention(message)
+        # 监控频道中的直接命令 - 生成图表
         elif is_monitored_channel and self.has_stock_command(message.content):
             self.logger.info(f'在监控频道中检测到股票命令，开始处理图表请求...')
             await self.handle_chart_request(message)
@@ -304,6 +340,15 @@ class DiscordBot(commands.Bot):
         """检查消息是否包含股票命令格式"""
         # 简单检查是否包含股票符号和时间框架格式
         return bool(re.search(r'[A-Z:]+[,\s]+\d+[smhdwMy]', content, re.IGNORECASE))
+    
+    def is_report_channel(self, channel) -> bool:
+        """检查是否为report频道"""
+        if hasattr(self.config, 'report_channel_ids') and self.config.report_channel_ids:
+            # 如果配置了特定的report频道ID
+            return str(channel.id) in self.config.report_channel_ids
+        else:
+            # 默认检查频道名是否包含"report"
+            return channel.name and "report" in channel.name.lower()
     
     def has_prediction_command(self, content: str) -> bool:
         """检查消息是否包含预测请求"""
@@ -546,7 +591,7 @@ class DiscordBot(commands.Bot):
     
     def has_admin_command(self, content: str) -> bool:
         """检查消息是否包含管理员命令"""
-        admin_commands = ['!vip_add', '!vip_remove', '!vip_list', '!quota', '!help_admin']
+        admin_commands = ['!vip_add', '!vip_remove', '!vip_list', '!quota', '!help_admin', '!exempt_add', '!exempt_remove', '!exempt_list']
         content_lower = content.lower().strip()
         return any(content_lower.startswith(cmd) for cmd in admin_commands)
     
@@ -565,19 +610,29 @@ class DiscordBot(commands.Bot):
         try:
             user_id = str(message.author.id)
             username = message.author.display_name or message.author.name
+            content = message.content.strip()
             
-            # 检查管理员权限
+            # !quota命令允许所有用户使用
+            if content.lower().startswith('!quota'):
+                await self.handle_quota_command(message, content)
+                return
+            
+            # 其他命令需要管理员权限
             if not self.is_admin_user(user_id):
                 await message.reply("❌ 您没有管理员权限执行此命令")
                 return
-            
-            content = message.content.strip()
             
             if content.lower().startswith('!vip_add'):
                 await self.handle_vip_add_command(message, content)
             elif content.lower().startswith('!vip_remove'):
                 await self.handle_vip_remove_command(message, content)
             elif content.lower().startswith('!vip_list'):
+                await self.handle_vip_list_command(message)
+            elif content.lower().startswith('!exempt_add'):
+                await self.handle_vip_add_command(message, content)
+            elif content.lower().startswith('!exempt_remove'):
+                await self.handle_vip_remove_command(message, content)
+            elif content.lower().startswith('!exempt_list'):
                 await self.handle_vip_list_command(message)
             elif content.lower().startswith('!quota'):
                 await self.handle_quota_command(message, content)
@@ -1242,6 +1297,7 @@ class DiscordBot(commands.Bot):
         
         await ctx.send(embed=embed)
     
+
     @commands.command(name='logs', aliases=['日志', '统计'])
     async def logs_command(self, ctx: commands.Context):
         """查看今日请求日志统计"""

@@ -55,6 +55,22 @@ class Config:
                 self.monitor_channel_ids = []
                 self.logger.warning("未配置监控频道")
         
+        # 专门的report频道配置
+        report_channels_str = os.getenv('REPORT_CHANNEL_IDS')
+        if report_channels_str:
+            self.report_channel_ids = [id.strip() for id in report_channels_str.split(',') if id.strip()]
+            self.logger.info(f"配置report频道监控: {self.report_channel_ids}")
+        else:
+            # 兼容单个report频道配置
+            single_report_channel = os.getenv('REPORT_CHANNEL_ID')
+            if single_report_channel:
+                self.report_channel_ids = [single_report_channel.strip()]
+                self.logger.info(f"配置单个report频道监控: {self.report_channel_ids}")
+            else:
+                # 没有配置时默认为空，将通过频道名称检测
+                self.report_channel_ids = []
+                self.logger.info("未配置report频道ID，将监控所有名为'report'的频道")
+        
         # 可选配置
         self.log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
         self.max_retries = int(os.getenv('MAX_RETRIES', '3'))
